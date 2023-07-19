@@ -1974,31 +1974,31 @@ pub struct IntelIntel {
     pub stale_intel: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LastAllianceName {
     pub key: Box<Option<String>>,
     pub variables: Box<Option<Vec<LastAllianceNameVariable>>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LastAllianceNameVariable {
     pub key: Box<Option<String>>,
     pub value: Box<Option<LastKilledCountryName>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LastKilledCountryName {
     pub key: Box<Option<String>>,
     pub variables: Box<Option<Vec<LastKilledCountryNameVariable>>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LastKilledCountryNameVariable {
     pub value: Box<Option<RulerTitleFemaleClass>>,
     pub key: Box<Option<String>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct RulerTitleFemaleClass {
     pub key: Box<Option<String>>,
 }
@@ -2188,7 +2188,7 @@ pub struct PurpleName {
     pub variables: Box<Option<Vec<IndigoVariable>>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct IndigoVariable {
     pub value: Box<Option<LastAllianceName>>,
     pub key: Box<Option<String>>,
