@@ -4,6 +4,7 @@ mod file;
 mod file_io;
 mod models;
 mod parser;
+mod singletons;
 
 use crate::api::exp_api;
 use actix_web::{middleware::Logger, App, HttpServer};
@@ -17,7 +18,7 @@ async fn main() -> std::io::Result<()> {
     spawn_file_watcher(
         r#"C:\Users\kella\OneDrive\Documentos\Paradox Interactive\Stellaris\save games"#.to_owned(),
     );
-    std::env::set_var("RUST_LOG", "trace");
+    std::env::set_var("RUST_LOG", "debug");
     std::env::set_var("RUST_BACKTRACE", "1");
     env_logger::init();
 

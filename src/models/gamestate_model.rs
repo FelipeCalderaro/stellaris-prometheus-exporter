@@ -49,14 +49,14 @@ pub enum VecOrMap<T> {
     Map(HashMap<String, T>),
     Vec(Vec<T>),
     EmptyVec(Vec<None>),
-    Unknown(serde_json::Value),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum VecOrStruct<T> {
     Struct(T),
     Vec(Vec<T>),
+    Empty(Vec<None>),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -64,9 +64,9 @@ pub struct Gamestate {
     pub slave_market_manager: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
     pub country: Box<Option<VecOrMap<CountryValue>>>,
     pub leaders: Box<Option<VecOrMap<LeaderValue>>>,
-    pub espionage_assets: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
-    pub flags: Box<Option<GamestateFlags>>,
-    pub war: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
+    pub espionage_assets: Option<VecOrMap<EspionageAsset>>,
+    pub flags: Box<Option<serde_json::Value>>,
+    pub war: Box<Option<VecOrMap<War>>>,
     pub orbital_line: Box<Option<VecOrMap<OrbitalLine>>>,
     pub name: Box<Option<String>>,
     pub random_name_database: Box<Option<RandomNameDatabase>>,
@@ -91,19 +91,19 @@ pub struct Gamestate {
     pub last_refugee_country: Box<Option<Number>>,
     pub fired_event_ids: Box<Option<Vec<String>>>,
     pub player: Box<Option<Vec<Player>>>,
-    pub truce: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
+    pub truce: Box<Option<VecOrMap<TruceValue>>>,
     pub last_event_id: Box<Option<Number>>,
     pub agreements: Box<Option<Agreements>>,
     pub last_created_army: Box<Option<Number>>,
     pub last_created_leader: Box<Option<Number>>,
     pub spy_networks: Box<Option<VecOrMap<SpyNetwork>>>,
-    pub saved_leaders: Box<Option<SavedLeaders>>,
+    pub saved_leaders: Box<Option<VecOrStruct<SavedLeaders>>>,
     pub galactic_object: Box<Option<VecOrMap<GalacticObject>>>,
     pub name_list: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
     pub last_created_system: Box<Option<Number>>,
     pub construction: Box<Option<Construction>>,
     pub galaxy_radius: Box<Option<Number>>,
-    pub debris: Box<Option<VecOrMap<Debris>>>,
+    pub debris: Box<Option<DebrisOrValue>>,
     pub trade_deal: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
     pub sectors: Box<Option<VecOrMap<Sector>>>,
     pub espionage_operations: Box<Option<EspionageOperations>>,
@@ -118,7 +118,7 @@ pub struct Gamestate {
     pub deposit: Box<Option<VecOrMap<DepositValue>>>,
     pub nebula: Box<Option<Vec<Nebula>>>,
     pub random_seed: Box<Option<Number>>,
-    pub megastructures: Box<Option<VecOrMap<Megastructure>>>,
+    pub megastructures: Box<Option<HashMap<String, Megastructure>>>,
     pub pop: Box<Option<VecOrMap<Pop>>>,
     pub last_notification_id: Box<Option<Number>>,
     pub bypasses: Box<Option<VecOrMap<Bypass>>>,
@@ -146,15 +146,69 @@ pub struct Gamestate {
     pub ground_combat: Box<Option<GroundCombat>>,
     pub trade_routes: Box<Option<VecOrMap<TradeRoute>>>,
     pub system_initializer_counter: Box<Option<SystemInitializerCounter>>,
-    pub ambient_object: Box<Option<VecOrMap<AmbientObjectValue>>>,
+    pub ambient_object: Box<Option<serde_json::Value>>,
     pub market: Box<Option<Market>>,
     pub last_created_ambient_object: Box<Option<Number>>,
     pub council_positions: Box<Option<CouncilPositions>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EspionageAsset {
+    #[serde(rename = "type")]
+    pub espionage_asset_type: Option<String>,
+    pub name: Option<EspionageAssetName>,
+    pub species_ref: Option<Number>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EspionageAssetName {
+    pub use_full_regnal_name: Option<String>,
+    pub full_names: Option<FullNames>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FullNames {
+    pub key: Option<String>,
+    pub variables: Option<Vec<FullNamesVariable>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FullNamesVariable {
+    pub key: Option<String>,
+    pub value: Option<LastKilledCountryName>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum TruceValue {
+    String(String),
+    TruceClass(TruceClass),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TruceClass {
+    pub name: Option<LastKilledCountryName>,
+    pub start_date: Option<String>,
+    pub truce_type: Option<String>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Agreements {
-    pub agreements: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
+    pub agreements: Box<Option<VecOrMap<Box<serde_json::Value>>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -170,6 +224,8 @@ pub struct AmbientObjectClass {
     pub data: Box<Option<String>>,
     pub properties: Box<Option<Properties>>,
     pub coordinate: Box<Option<Position>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -179,6 +235,8 @@ pub struct Position {
     pub x: Box<Option<Number>>,
     pub visual_height: Box<Option<Number>>,
     pub randomized: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -188,6 +246,8 @@ pub struct Properties {
     pub attach: Box<Option<Owner>>,
     pub scale: Box<Option<Number>>,
     pub entity_face_object: Box<Option<Owner>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -195,11 +255,15 @@ pub struct Owner {
     pub id: Box<Option<Number>>,
     #[serde(rename = "type")]
     pub owner_type: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ArchaeologicalSites {
     pub sites: Box<Option<VecOrMap<Site>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -217,6 +281,8 @@ pub struct Site {
     pub locked: Box<Option<String>>,
     pub visible_to: Box<Option<Vec<Number>>>,
     pub log: Box<Option<Vec<Log>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -229,6 +295,8 @@ pub struct Log {
     pub title: Box<Option<String>>,
     pub total: Box<Option<Number>>,
     pub roll: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -257,6 +325,8 @@ pub struct ArmyClass {
     pub army_modifier: Box<Option<ArmyModifier>>,
     pub experience: Box<Option<Number>>,
     pub is_defense_army_mod_spawned: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -267,18 +337,24 @@ pub struct ArmyModifier {
     pub army_attack_damage_mult: Box<Option<Number>>,
     pub army_attack_health_mult: Box<Option<Number>>,
     pub army_starting_experience_add: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ArmyName {
     pub key: Box<Option<String>>,
     pub variables: Box<Option<Vec<PurpleVariable>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PurpleVariable {
     pub value: Box<Option<PurpleValue>>,
     pub key: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -286,12 +362,16 @@ pub struct PurpleValue {
     pub key: Box<Option<String>>,
     pub variables: Box<Option<Vec<FluffyVariable>>>,
     pub literal: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FluffyVariable {
     pub key: Box<Option<String>>,
     pub value: Box<Option<SectorName>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -299,18 +379,24 @@ pub struct SectorName {
     pub key: Box<Option<String>>,
     pub literal: Box<Option<String>>,
     pub variables: Box<Option<Vec<TentacledVariable>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TentacledVariable {
     pub key: Box<Option<String>>,
     pub value: Box<Option<PluralClass>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PluralClass {
     pub key: Box<Option<String>>,
     pub literal: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -325,6 +411,8 @@ pub struct BuildingClass {
     pub position: Box<Option<Number>>,
     #[serde(rename = "type")]
     pub building_type: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -336,6 +424,8 @@ pub struct Bypass {
     pub active_connections: Box<Option<Vec<Number>>>,
     pub active: Box<Option<String>>,
     pub linked_to: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -344,17 +434,23 @@ pub struct Cluster {
     pub radius: Box<Option<Number>>,
     pub position: Box<Option<Position>>,
     pub objects: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Construction {
     pub queue_mgr: Box<Option<QueueMgr>>,
     pub item_mgr: Box<Option<ItemMgr>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ItemMgr {
     pub items: Box<Option<VecOrMap<ItemValue>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -381,6 +477,8 @@ pub struct ItemItem {
     pub buildable_federation_ship: Box<Option<BuildableShip>>,
     pub buildable_decision: Box<Option<BuildableDecision>>,
     pub buildable_colony_ship: Box<Option<BuildableColonyShip>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -388,35 +486,47 @@ pub struct BuildableColonyShip {
     pub ship_design: Box<Option<Number>>,
     pub species: Box<Option<Number>>,
     pub orbitable: Box<Option<BuildableColonyShipOrbitable>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BuildableColonyShipOrbitable {
     pub starbase: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BuildableDecision {
     pub planet: Box<Option<Number>>,
     pub decision: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BuildableDistrict {
     pub district: Box<Option<String>>,
     pub planet: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BuildableShip {
     pub ship_design: Box<Option<Number>>,
     pub orbitable: Box<Option<BuildableColonyShipOrbitable>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BuildablePlanetBuilding {
     pub planet: Box<Option<Number>>,
     pub building: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -424,6 +534,8 @@ pub struct BuildableReplaceDistrict {
     pub district: Box<Option<String>>,
     pub planet: Box<Option<Number>>,
     pub replace: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -431,6 +543,8 @@ pub struct BuildableStarbaseBuilding {
     pub starbase_building: Box<Option<String>>,
     pub starbase: Box<Option<Number>>,
     pub slot: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -438,12 +552,16 @@ pub struct BuildableStarbaseModule {
     pub starbase_module: Box<Option<String>>,
     pub slot: Box<Option<Number>>,
     pub starbase: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BuildableStarbaseUpgrade {
     pub starbase_upgrade: Box<Option<String>>,
     pub starbase: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -452,11 +570,15 @@ pub struct ItemResources {
     pub alloys: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
     pub consumer_goods: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct QueueMgr {
     pub queues: Box<Option<VecOrMap<Queue>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -468,11 +590,15 @@ pub struct Queue {
     pub disabled: Box<Option<String>>,
     pub owner: Box<Option<Number>>,
     pub items: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CouncilPositions {
     pub council_positions: Box<Option<VecOrMap<CouncilPositionValue>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -488,6 +614,8 @@ pub struct CouncilPositionClass {
     pub council_position_type: Box<Option<String>>,
     pub leader: Box<Option<Number>>,
     pub country: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -499,117 +627,145 @@ pub enum CountryValue {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CountryClass {
-    pub intel: Box<Option<Vec<CountryIntel>>>,
-    pub empire_size: Box<Option<Number>>,
-    pub sectors: Box<Option<Sectors>>,
-    pub employable_pops: Box<Option<Number>>,
-    pub tech_status: Box<Option<TechStatus>>,
-    pub old_awareness: Box<Option<Number>>,
-    pub starbase_capacity: Box<Option<Number>>,
-    pub fleet_size: Box<Option<Number>>,
-    pub highest_intel_level: Box<Option<Vec<Number>>>,
-    pub color_index: Box<Option<Number>>,
-    pub emigration: Box<Option<Number>>,
-    pub traditions: Box<Option<Vec<String>>>,
-    pub homeworld_name: Box<Option<PluralClass>>,
-    pub next_transport_fleet_number: Box<Option<Number>>,
-    pub customization: Box<Option<String>>,
-    pub policy_flags: Box<Option<Vec<String>>>,
-    pub first_contact: Box<Option<FirstContactUnion>>,
-    pub government: Box<Option<Government>>,
-    pub given_value: Box<Option<Number>>,
-    pub name_list: Box<Option<String>>,
-    pub flags: Box<Option<CountryFlags>>,
-    pub intel_level: Box<Option<Vec<Number>>>,
-    pub next_army_number: Box<Option<Number>>,
-    pub events: Box<Option<EventsUnion>>,
-    pub sapient: Box<Option<Number>>,
-    pub timed_modifier: Box<Option<CountryTimedModifier>>,
-    pub ascension_perks: Box<Option<Vec<String>>>,
     pub flag: Box<Option<Flag>>,
-    pub intel_manager: Box<Option<IntelManager>>,
-    pub controlled_planets: Box<Option<Vec<Number>>>,
-    pub victory_score: Box<Option<Number>>,
-    pub ruler: Box<Option<Number>>,
+    pub color_index: Box<Option<Number>>,
     pub name: Box<Option<PurpleName>>,
-    pub room: Box<Option<String>>,
-    pub usable_bypasses: Box<Option<Vec<Number>>>,
-    pub modules: Box<Option<Modules>>,
-    pub awareness: Box<Option<Number>>,
-    pub advisor_voice_type: Box<Option<String>>,
-    pub owned_planets: Box<Option<Vec<Number>>>,
-    pub owned_leaders: Box<Option<Vec<Number>>>,
-    pub initialized: Box<Option<String>>,
-    pub track_all_situations: Box<Option<String>>,
-    pub last_date_at_war: Box<Option<String>>,
-    pub visited_objects: Box<Option<Vec<Number>>>,
-    pub city_graphical_culture: Box<Option<String>>,
-    pub personality: Box<Option<String>>,
-    pub variables: Box<Option<VecOrMap<Number>>>,
-    pub ship_names: Box<Option<VecOrMap<Number>>>,
-    pub shown_message_types: Box<Option<Vec<String>>>,
-    pub is_in_breach_of_any: Box<Option<String>>,
+    pub adjective: Box<Option<CountryAdjective>>,
     pub custom_name: Box<Option<String>>,
-    pub owned_species_refs: Box<Option<Vec<Number>>>,
-    pub terra_incognita: Box<Option<TerraIncognita>>,
-    pub sensor_range_fleets: Box<Option<Vec<Number>>>,
-    pub capital: Box<Option<Number>>,
-    pub active_policies: Box<Option<Vec<ActivePolicy>>>,
-    pub control_groups: Box<Option<VecOrMap<Vec<Owner>>>>,
-    pub built_species_ref: Box<Option<Number>>,
-    pub num_upgraded_starbase: Box<Option<Number>>,
-    pub victory_rank: Box<Option<Number>>,
-    pub faction: Box<Option<Faction>>,
+    pub tech_status: Box<Option<TechStatus>>,
+    pub last_date_was_human: Box<Option<String>>,
     pub last_date_war_lost: Box<Option<String>>,
-    pub tech_power: Box<Option<Number>>,
-    pub used_naval_capacity: Box<Option<Number>>,
-    pub next_election: Box<Option<String>>,
-    pub ai: Box<Option<Ai>>,
-    pub founder_species_ref: Box<Option<Number>>,
-    pub new_colonies: Box<Option<Number>>,
-    pub has_advisor: Box<Option<String>>,
-    pub military_power: Box<Option<Number>>,
-    pub fleet_template_manager: Box<Option<FleetTemplateManagerUnion>>,
-    pub economy_power: Box<Option<Number>>,
-    pub government_date: Box<Option<String>>,
-    pub default_planet_automation_settings: Box<Option<Vec<String>>>,
-    pub starting_system: Box<Option<Number>>,
-    pub surveyed: Box<Option<Vec<Number>>>,
-    pub ship_prefix: Box<Option<LastAllianceName>>,
-    pub owned_armies: Box<Option<Vec<Number>>>,
-    pub immigration: Box<Option<Number>>,
-    pub ship_design_collection: Box<Option<CountryShipDesignCollection>>,
+    pub last_date_at_war: Box<Option<String>>,
     pub budget: Box<Option<Budget>>,
+    pub events: Box<Option<EventsUnion>>,
+    pub track_all_situations: Box<Option<String>>,
+    pub terra_incognita: Box<Option<TerraIncognita>>,
+    pub military_power: Box<Option<Number>>,
+    pub economy_power: Box<Option<Number>>,
+    pub victory_rank: Box<Option<Number>>,
+    pub victory_score: Box<Option<Number>>,
+    pub tech_power: Box<Option<Number>>,
+    pub immigration: Box<Option<Number>>,
+    pub emigration: Box<Option<Number>>,
+    pub fleet_size: Box<Option<Number>>,
+    pub used_naval_capacity: Box<Option<Number>>,
+    pub empire_size: Box<Option<Number>>,
+    pub new_colonies: Box<Option<Number>>,
+    pub sapient: Box<Option<Number>>,
+    pub graphical_culture: Box<Option<String>>,
+    pub city_graphical_culture: Box<Option<String>>,
+    pub room: Box<Option<String>>,
+    pub ai: Box<Option<Ai>>,
+    pub capital: Box<Option<Number>>,
+    pub founder_species_ref: Box<Option<Number>>,
+    pub ethos: Box<Option<CountryEthos>>,
+    pub last_alliance_name: Box<Option<LastAllianceName>>,
+    pub fleet_template_manager: Box<Option<FleetTemplateManagerUnion>>,
+    pub government: Box<Option<Government>>,
+    pub advisor_voice_type: Box<Option<String>>,
+    pub personality: Box<Option<String>>,
+    pub next_election: Box<Option<String>>,
+    pub government_date: Box<Option<String>>,
+    pub surveyed: Box<Option<Vec<Number>>>,
+    pub homeworld_name: Box<Option<PluralClass>>,
+    pub visited_objects: Box<Option<Vec<Number>>>,
+    pub intel_level: Box<Option<Vec<Number>>>,
+    pub highest_intel_level: Box<Option<Vec<Number>>>,
+    pub intel: Box<Option<Vec<CountryIntel>>>,
+    pub detection_intel: Box<Option<Vec<DetectionIntel>>>,
+    pub default_planet_automation_settings: Box<Option<Vec<String>>>,
+    pub timed_modifier: Box<Option<CountryTimedModifier>>,
+    pub flags: Box<Option<CountryFlags>>,
+    pub next_transport_fleet_number: Box<Option<Number>>,
+    pub next_army_number: Box<Option<Number>>,
+    pub sensor_range_fleets: Box<Option<Vec<Number>>>,
+    pub space_critter: Box<Option<Vec<Number>>>,
+    pub faction: Box<Option<Faction>>,
+    pub name_list: Box<Option<String>>,
+    pub ship_names: Box<Option<HashMap<String, Number>>>,
+    pub ruler: Box<Option<Number>>,
+    pub control_groups: Box<Option<VecOrMap<Vec<Owner>>>>,
+    pub ship_prefix: Box<Option<LastAllianceName>>,
+    pub active_policies: Box<Option<Vec<ActivePolicy>>>,
+    pub policy_flags: Box<Option<Vec<String>>>,
+    pub federation: Box<Option<Number>>,
+    pub subjects: Box<Option<Vec<Number>>>,
+    pub starting_system: Box<Option<Number>>,
+    pub has_advisor: Box<Option<String>>,
+    pub shown_message_types: Box<Option<Vec<String>>>,
+    pub owned_leaders: Box<Option<Vec<Number>>>,
     pub owned_megastructures: Box<Option<Vec<Number>>>,
     pub tradition_categories: Box<Option<Vec<String>>>,
-    pub adjective: Box<Option<CountryAdjective>>,
-    pub last_date_was_human: Box<Option<String>>,
+    pub traditions: Box<Option<Vec<String>>>,
+    pub ascension_perks: Box<Option<Vec<String>>>,
+    pub owned_armies: Box<Option<Vec<Number>>>,
+    pub owned_planets: Box<Option<Vec<Number>>>,
+    pub holding_planets: Box<Option<Vec<HoldingPlanet>>>,
+    pub restricted_systems: Box<Option<Vec<Number>>>,
+    pub controlled_planets: Box<Option<Vec<Number>>>,
+    pub ship_design_collection: Box<Option<CountryShipDesignCollection>>,
+    pub edicts: Box<Option<Vec<Edict>>>,
     #[serde(rename = "type")]
     pub country_type: Box<Option<String>>,
+    pub modules: Box<Option<Modules>>,
+    pub initialized: Box<Option<String>>,
     pub relations_manager: Box<Option<RelationsManager>>,
     pub espionage_manager: Box<Option<EspionageManagerUnion>>,
-    pub last_changed_country_type: Box<Option<String>>,
+    pub intel_manager: Box<Option<IntelManager>>,
     pub fleets_manager: Box<Option<FleetsManagerUnion>>,
-    pub hyperlane_systems: Box<Option<Vec<Number>>>,
-    pub graphical_culture: Box<Option<String>>,
-    pub relics: Box<Option<Vec<String>>>,
-    pub space_critter: Box<Option<Vec<Number>>>,
-    pub last_received_relic: Box<Option<String>>,
-    pub ethos: Box<Option<CountryEthos>>,
-    pub holding_planets: Box<Option<Vec<HoldingPlanet>>>,
-    pub edicts: Box<Option<Vec<Edict>>>,
-    pub restricted_systems: Box<Option<Vec<Number>>>,
-    pub regnal_numbers: Box<Option<Vec<RegnalNumber>>>,
-    pub enslaved_species_refs: Box<Option<Vec<Number>>>,
-    pub incoming_actions: Box<Option<Vec<IncomingAction>>>,
-    pub federation: Box<Option<Number>>,
-    pub heir_title_female: Box<Option<PluralClass>>,
+    pub war_allies: Box<Option<Vec<Number>>>,
+    pub customization: Box<Option<String>>,
+    pub is_in_breach_of_any: Box<Option<String>>,
+    pub awareness: Box<Option<Number>>,
+    pub old_awareness: Box<Option<Number>>,
+    pub last_changed_country_type: Box<Option<String>>,
     pub seen_bypass_types: Box<Option<Vec<String>>>,
-    pub ruler_title_female: Box<Option<RulerTitleFemaleClass>>,
-    pub ruler_title: Box<Option<RulerTitleFemaleClass>>,
-    pub location: Box<Option<Owner>>,
+    pub relics: Box<Option<Vec<String>>>,
+    pub last_received_relic: Box<Option<String>>,
+    pub usable_bypasses: Box<Option<Vec<Number>>>,
+    pub hyperlane_systems: Box<Option<Vec<Number>>>,
+    pub sectors: Box<Option<Sectors>>,
+    pub given_value: Box<Option<f64>>,
+    pub num_upgraded_starbase: Box<Option<Number>>,
+    pub starbase_capacity: Box<Option<Number>>,
+    pub employable_pops: Box<Option<Number>>,
+    pub owned_species_refs: Box<Option<Vec<Number>>>,
+    pub first_contact: Box<Option<FirstContactUnion>>,
+    pub built_species_ref: Box<Option<Number>>,
+    pub seen_bypasses: Box<Option<Vec<Number>>>,
+    pub last_activated_relic: Box<Option<String>>,
+    pub enslaved_species_refs: Box<Option<Vec<Number>>>,
+    pub overlord: Box<Option<Number>>,
+    pub subject_date: Box<Option<String>>,
+    pub loyalty: Box<Option<f64>>,
+    pub regnal_numbers: Box<Option<Vec<RegnalNumber>>>,
+    pub last_lost_relic: Box<Option<String>>,
+    pub associated_federation: Box<Option<Number>>,
+    pub incoming_actions: Box<Option<Vec<IncomingAction>>>,
     pub preftl_age: Box<Option<String>>,
-    pub last_alliance_name: Box<Option<LastAllianceName>>,
+    pub location: Box<Option<Owner>>,
+    pub rebelling_against: Box<Option<Number>>,
+    pub rebel: Box<Option<String>>,
+    pub is_affected_by_war_exhaustion: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DetectionIntel {
+    pub star: Option<Number>,
+    pub intel: Option<Vec<DetectionIntelIntel>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DetectionIntelIntel {
+    pub strength: Option<Number>,
+    pub timestamp: Option<String>,
+    pub country: Option<Number>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -617,12 +773,16 @@ pub struct ActivePolicy {
     pub policy: Box<Option<String>>,
     pub selected: Box<Option<String>>,
     pub date: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CountryAdjective {
     pub variables: Box<Option<Vec<TentacledVariable>>>,
     pub key: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -651,6 +811,8 @@ pub struct Ai {
     pub need_strategic_war_data: Box<Option<String>>,
     pub colonize: Box<Option<String>>,
     pub initialized: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -667,6 +829,8 @@ pub struct Attitude {
     pub weight: Box<Option<Number>>,
     pub attitude: Box<Option<String>>,
     pub country: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -674,6 +838,8 @@ pub struct LastDiploAction {
     pub country: Box<Option<Number>>,
     pub action: Box<Option<String>>,
     pub creation_date: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -683,6 +849,8 @@ pub struct Strategy {
     pub strategy_type: Box<Option<Number>>,
     pub id: Box<Option<Number>>,
     pub value: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -690,6 +858,8 @@ pub struct Budget {
     pub current_month: Box<Option<TMonth>>,
     pub last_month: Box<Option<TMonth>>,
     pub income_high_water_mark: Box<Option<IncomeHighWaterMark>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -703,6 +873,8 @@ pub struct TMonth {
     pub trade_expenses: Box<Option<ExtraBalance>>,
     pub income: Box<Option<Income>>,
     pub balance: Box<Option<Balance>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -790,6 +962,8 @@ pub struct Balance {
     pub giga_gigastructures: Box<Option<BalanceGigaGigastructures>>,
     pub planet_deposits: Box<Option<PlanetDeposits>>,
     pub planet_telepaths: Box<Option<PlanetEvaluatorsClass>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -800,21 +974,29 @@ pub struct LeaderScientistsClass {
     pub consumer_goods: Box<Option<Number>>,
     pub unity: Box<Option<Number>>,
     pub influence: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Campaigns {
     pub energy: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CommercialPacts {
     pub influence: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DiplomaticNetworking {
     pub unity: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -824,6 +1006,8 @@ pub struct BalanceGigaGigastructures {
     pub alloys: Box<Option<Number>>,
     pub influence: Box<Option<Number>>,
     pub society_research: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -833,6 +1017,8 @@ pub struct GigaStructures {
     pub energy: Box<Option<Number>>,
     pub unity: Box<Option<Number>>,
     pub influence: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -841,6 +1027,8 @@ pub struct BalanceLeaderGenerals {
     pub unity: Box<Option<Number>>,
     pub consumer_goods: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -850,6 +1038,8 @@ pub struct LeaderScientists {
     pub alloys: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
     pub consumer_goods: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -860,6 +1050,8 @@ pub struct Megastructures {
     pub sr_dark_matter: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -878,6 +1070,8 @@ pub struct OrbitalMiningDeposits {
     pub volatile_motes: Box<Option<Number>>,
     pub exotic_gases: Box<Option<Number>>,
     pub rare_crystals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -892,6 +1086,8 @@ pub struct OrbitalResearchDeposits {
     pub energy: Box<Option<Number>>,
     pub minor_artifacts: Box<Option<Number>>,
     pub sr_dark_matter: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -900,6 +1096,8 @@ pub struct BalancePlanetAdministrators {
     pub consumer_goods: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -909,29 +1107,39 @@ pub struct BalancePlanetArtisans {
     pub food: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
     pub alloys: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PlanetCultureWorkers {
     pub society_research: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PlanetDeposits {
     pub alloys: Box<Option<Number>>,
     pub consumer_goods: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PlanetEntertainersClass {
     pub consumer_goods: Box<Option<Number>>,
     pub unity: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PlanetEvaluatorsClass {
     pub unity: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -942,6 +1150,8 @@ pub struct BalancePlanetFarmers {
     pub unity: Box<Option<Number>>,
     pub acot_sr_light_matter: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -956,11 +1166,15 @@ pub struct BalancePlanetJobs {
     pub energy: Box<Option<Number>>,
     pub minor_artifacts: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PlanetMerchants {
     pub consumer_goods: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -968,6 +1182,8 @@ pub struct PlanetMetallurgists {
     pub alloys: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -977,6 +1193,8 @@ pub struct BalancePlanetMiners {
     pub acot_sr_stellarite: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -984,11 +1202,15 @@ pub struct PlanetNecroApprentices {
     pub food: Box<Option<Number>>,
     pub unity: Box<Option<Number>>,
     pub consumer_goods: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PlanetPopAssemblersClass {
     pub alloys: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1002,18 +1224,24 @@ pub struct GigaGigastructuresClass {
     pub unity: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
     pub minor_artifacts: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PlanetTechnician {
     pub unity: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PopCategoryBioTrophy {
     pub consumer_goods: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1021,6 +1249,8 @@ pub struct PopCategoryDrones {
     pub food: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1030,6 +1260,8 @@ pub struct PopCategoryPrecursor {
     pub minerals: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1039,6 +1271,8 @@ pub struct BalancePopCategoryRulers {
     pub energy: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
     pub rare_crystals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1046,6 +1280,8 @@ pub struct PopCategorySlave {
     pub food: Box<Option<Number>>,
     pub consumer_goods: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1055,6 +1291,8 @@ pub struct PopCategoryXenoWardElement {
     pub food: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
     pub alloys: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1063,6 +1301,8 @@ pub struct ShipComponents {
     pub alloys: Box<Option<Number>>,
     pub ehof_sr_sentient_metal: Box<Option<Number>>,
     pub sr_zro: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1071,6 +1311,8 @@ pub struct Ships {
     pub acot_sr_dark_energy: Box<Option<Number>>,
     pub sr_dark_matter: Box<Option<Number>>,
     pub alloys: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1079,12 +1321,16 @@ pub struct BalanceStarbaseBuildings {
     pub energy: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
     pub sr_dark_matter: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TradeRoutes {
     pub energy: Box<Option<Number>>,
     pub consumer_goods: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1098,6 +1344,8 @@ pub struct UnemploymentResources {
     pub unity: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
     pub minor_artifacts: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1171,6 +1419,8 @@ pub struct Expenses {
     pub country_tech: Box<Option<CommercialPacts>>,
     pub country_ruler: Box<Option<CommercialPacts>>,
     pub planet_telepaths: Box<Option<Campaigns>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1178,18 +1428,24 @@ pub struct ExpensesArmies {
     pub energy: Box<Option<Number>>,
     pub alloys: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExpensesGigaGigastructures {
     pub alloys: Box<Option<Number>>,
     pub influence: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GigaKilostructures {
     pub energy: Box<Option<Number>>,
     pub alloys: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1197,12 +1453,16 @@ pub struct ExpensesPlanetAdministrators {
     pub consumer_goods: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PlanetMetallurgistsClass {
     pub minerals: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1212,6 +1472,8 @@ pub struct PlanetDistricts {
     pub energy: Box<Option<Number>>,
     pub alloys: Box<Option<Number>>,
     pub volatile_motes: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1219,6 +1481,8 @@ pub struct ExpensesPlanetJobs {
     pub acot_sr_light_matter: Box<Option<Number>>,
     pub consumer_goods: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1226,6 +1490,8 @@ pub struct ExpensesPlanetResearchers {
     pub consumer_goods: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1234,17 +1500,23 @@ pub struct PopCategoryPrecursorClass {
     pub minerals: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
     pub energy: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExpensesStarbaseBuildings {
     pub energy: Box<Option<Number>>,
     pub sr_dark_matter: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExtraBalance {
     pub none: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1305,6 +1577,8 @@ pub struct Income {
     pub ships: Box<Option<Ships>>,
     pub station_gatherers: Box<Option<Campaigns>>,
     pub planet_telepaths: Box<Option<DiplomaticNetworking>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1315,6 +1589,8 @@ pub struct GigaMegastructures {
     pub minerals: Box<Option<Number>>,
     pub rare_crystals: Box<Option<Number>>,
     pub engineering_research: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1323,6 +1599,8 @@ pub struct IncomeLeaderGenerals {
     pub unity: Box<Option<Number>>,
     pub consumer_goods: Box<Option<Number>>,
     pub food: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1330,6 +1608,8 @@ pub struct PurplePlanetArtisans {
     pub consumer_goods: Box<Option<Number>>,
     pub alloys: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1340,6 +1620,8 @@ pub struct IncomePlanetFarmers {
     pub unity: Box<Option<Number>>,
     pub acot_sr_light_matter: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1348,17 +1630,23 @@ pub struct IncomePlanetMiners {
     pub acot_sr_light_matter: Box<Option<Number>>,
     pub acot_sr_stellarite: Box<Option<Number>>,
     pub minerals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IncomePopCategoryRulers {
     pub rare_crystals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PopCategoryWorkers {
     pub food: Box<Option<Number>>,
     pub rare_crystals: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1366,11 +1654,15 @@ pub struct IncomeHighWaterMark {
     pub length: Box<Option<Number>>,
     pub history: Box<Option<StandardEconomyModule>>,
     pub current: Box<Option<VecOrMap<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StandardEconomyModule {
     pub resources: Box<Option<VecOrMap<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1379,6 +1671,8 @@ pub struct Edict {
     pub date: Box<Option<String>>,
     pub perpetual: Box<Option<String>>,
     pub start_date: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1391,11 +1685,15 @@ pub enum EspionageManagerUnion {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EspionageManagerClass {
     pub spy_networks: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CountryEthos {
     pub ethic: Box<Option<RequiredComponentUnion>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1420,12 +1718,16 @@ pub struct EventsClass {
     pub situations: Box<Option<Vec<Number>>>,
     pub special_project: Box<Option<SpecialProjectUnion>>,
     pub next_special_project_id: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EventChain {
     pub event_chain: Box<Option<String>>,
     pub scope: Box<Option<EventChainScope>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1438,6 +1740,8 @@ pub struct EventChainScope {
     pub scope_type: Box<Option<String>>,
     pub id: Box<Option<Number>>,
     pub random_allowed: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1449,7 +1753,8 @@ pub struct FromClass {
     pub random_allowed: Box<Option<String>>,
     pub saved_event_target: Box<Option<SavedEventTargetUnion>>,
     pub from: Box<Box<Option<FromClass>>>,
-    pub variables: Box<Option<ScopeVariables>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1465,11 +1770,15 @@ pub struct SavedEventTargetElement {
     pub id: Box<Option<Number>>,
     #[serde(rename = "type")]
     pub saved_event_target_type: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ScopeVariables {
     pub local_wormholes_num: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1481,9 +1790,10 @@ pub struct PurplePrev {
     pub random_allowed: Box<Option<String>>,
     pub saved_event_target: Box<Option<SavedEventTargetUnion>>,
     pub from: Box<Box<Option<FromClass>>>,
-    pub variables: Box<Option<ScopeVariables>>,
     pub root: Box<Box<Option<FromClass>>>,
     pub prev: Box<Box<Option<FromClass>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1495,6 +1805,8 @@ pub struct Poi {
     pub scope: Box<Option<PoiScope>>,
     pub has_location: Box<Option<String>>,
     pub name: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1508,6 +1820,8 @@ pub struct PoiScope {
     pub root: Box<Box<Option<FromClass>>>,
     pub prev: Box<Box<Option<FromClass>>>,
     pub saved_event_target: Box<Option<SavedEventTargetUnion>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1524,6 +1838,8 @@ pub struct SpecialProjectElement {
     pub debris: Box<Option<Number>>,
     pub days_left: Box<Option<Number>>,
     pub status: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1540,6 +1856,8 @@ pub struct PurpleSpecialProject {
     pub days_left: Box<Option<Number>>,
     pub debris: Box<Option<Number>>,
     pub ambient_object: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1552,6 +1870,8 @@ pub struct SpecialProjectScope {
     pub from: Box<Box<Option<FromClass>>>,
     pub prev: Box<Option<FluffyPrev>>,
     pub random: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1566,6 +1886,8 @@ pub struct FluffyPrev {
     pub random: Box<Option<Vec<Number>>>,
     pub saved_event_target: Box<Option<SavedEventTargetUnion>>,
     pub variables: Box<Option<ScopeVariables>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1578,12 +1900,16 @@ pub struct TentacledPrev {
     pub from: Box<Box<Option<FromClass>>>,
     pub prev: Box<Box<Option<TentacledPrev>>>,
     pub random: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SpeciesElement {
     pub planet: Box<Option<Number>>,
     pub species: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1602,6 +1928,8 @@ pub struct Faction {
     pub neutral: Box<Option<String>>,
     pub copy_hostility: Box<Option<String>>,
     pub country: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1614,6 +1942,8 @@ pub enum FirstContactUnion {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FirstContactClass {
     pub contacts: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1621,12 +1951,16 @@ pub struct Flag {
     pub background: Box<Option<Background>>,
     pub colors: Box<Option<Vec<String>>>,
     pub icon: Box<Option<Background>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Background {
     pub category: Box<Option<String>>,
     pub file: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1830,12 +2164,16 @@ pub struct CountryFlags {
     pub corrona_age: Box<Option<Number>>,
     pub paluush_primitives: Box<Option<Number>>,
     pub giga_eaw_country: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AsteroidSightedPreFtlGlobal {
     pub flag_days: Box<Option<Number>>,
     pub flag_date: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1855,6 +2193,8 @@ pub enum FleetTemplateManagerUnion {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FleetTemplateManagerClass {
     pub fleet_template: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1867,6 +2207,8 @@ pub enum FleetsManagerUnion {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FleetsManagerClass {
     pub owned_fleets: Box<Option<Vec<OwnedFleet>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1876,6 +2218,8 @@ pub struct OwnedFleet {
     pub lease_period: Box<Option<Number>>,
     pub previous_owner: Box<Option<Number>>,
     pub fleet: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1891,23 +2235,31 @@ pub struct Government {
     pub unlocked_civic_council_slots: Box<Option<Number>>,
     pub origin: Box<Option<String>>,
     pub heir: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CouncilAgendaCooldowns {
     pub council_agenda: Box<Option<String>>,
     pub start_date: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HoldingPlanet {
     pub key: Box<Option<String>>,
     pub value: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IncomingAction {
     pub action_embassy: Box<Option<ActionEmbassy>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1920,12 +2272,16 @@ pub struct ActionEmbassy {
     pub id: Box<Option<Number>>,
     pub actor: Box<Option<Number>>,
     pub waiting_for_vote: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CountryIntel {
     pub object: Box<Option<Number>>,
     pub hostile: Box<Option<Vec<Hostile>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1936,29 +2292,39 @@ pub struct Hostile {
     pub name: Box<Option<HostileName>>,
     pub has_boss: Box<Option<String>>,
     pub size: Box<Option<Vec<String>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HostileName {
     pub key: Box<Option<String>>,
     pub variables: Box<Option<Vec<StickyVariable>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StickyVariable {
     pub value: Box<Option<FluffyValue>>,
     pub key: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FluffyValue {
     pub key: Box<Option<String>>,
     pub variables: Box<Option<Vec<FluffyVariable>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IntelManager {
     pub intel: Box<Option<Vec<Vec<IntelUnion>>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1972,35 +2338,47 @@ pub enum IntelUnion {
 pub struct IntelIntel {
     pub intel: Box<Option<Number>>,
     pub stale_intel: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LastAllianceName {
     pub key: Box<Option<String>>,
     pub variables: Box<Option<Vec<LastAllianceNameVariable>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LastAllianceNameVariable {
     pub key: Box<Option<String>>,
     pub value: Box<Option<LastKilledCountryName>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LastKilledCountryName {
     pub key: Box<Option<String>>,
     pub variables: Box<Option<Vec<LastKilledCountryNameVariable>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LastKilledCountryNameVariable {
     pub value: Box<Option<RulerTitleFemaleClass>>,
     pub key: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct RulerTitleFemaleClass {
     pub key: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2018,6 +2396,8 @@ pub struct Modules {
     pub standard_technology_module: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
     pub tiered_technology_module: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
     pub basic_technology_module: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2037,6 +2417,8 @@ pub struct ExclusiveDiplomacyModuleClass {
     pub rival: Box<Option<Number>>,
     pub contact_rule: Box<Option<String>>,
     pub closed_borders: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2046,6 +2428,8 @@ pub struct CasusBelli {
     #[serde(rename = "type")]
     pub casus_belli_type: Box<Option<String>>,
     pub days_left: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2063,6 +2447,8 @@ pub struct StandardDiplomacyModule {
     pub can_receive: Box<Option<Vec<String>>>,
     pub can_send: Box<Option<Vec<String>>>,
     pub rival: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2076,6 +2462,8 @@ pub enum StandardEventModuleUnion {
 pub struct StandardEventModuleClass {
     pub delayed_event: Box<Option<DelayedEventUnion>>,
     pub accumulated_anomaly_spawn_chance: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2090,6 +2478,8 @@ pub struct DelayedEventElement {
     pub event: Box<Option<String>>,
     pub scope: Box<Box<Option<FromClass>>>,
     pub days: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2102,6 +2492,8 @@ pub enum StandardExpansionModuleUnion {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StandardExpansionModuleClass {
     pub expansion_list: Box<Option<Vec<ExpansionList>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2112,12 +2504,16 @@ pub struct ExpansionList {
     pub species_index: Box<Option<Number>>,
     pub ship_design: Box<Option<Number>>,
     pub construction_queue_item: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StandardLeaderModule {
     pub leaders: Box<Option<Vec<Number>>>,
     pub enabled: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2126,6 +2522,8 @@ pub struct StandardPopFactionsModule {
     pub total_faction_members_power: Box<Option<Number>>,
     pub last_created: Box<Option<String>>,
     pub total_faction_members: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2136,6 +2534,8 @@ pub struct StandardSpeciesRightsModule {
     pub built_species: Box<Option<BuiltSpecies>>,
     pub primary: Box<Option<BuiltSpecies>>,
     pub species_rights: Box<Option<Vec<BuiltSpecies>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2166,6 +2566,8 @@ pub struct BuiltSpecies {
     pub former_migration_control: Box<Option<String>>,
     pub former_colonization_control: Box<Option<String>>,
     pub last_changed_value: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2179,6 +2581,8 @@ pub enum StandardTradeRoutesModuleUnion {
 pub struct StandardTradeRoutesModuleClass {
     pub internal: Box<Option<Vec<Number>>>,
     pub last_month: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2186,23 +2590,31 @@ pub struct PurpleName {
     pub key: Box<Option<String>>,
     pub literal: Box<Option<String>>,
     pub variables: Box<Option<Vec<IndigoVariable>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct IndigoVariable {
     pub value: Box<Option<LastAllianceName>>,
     pub key: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RegnalNumber {
     pub regnal_name: Box<Option<RulerTitleFemaleClass>>,
     pub regnal_number: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RelationsManager {
     pub relation: Box<Option<Vec<Relation>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2237,6 +2649,8 @@ pub struct Relation {
     pub friendly: Box<Option<String>>,
     pub neutral: Box<Option<String>>,
     pub killed_ships: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2252,6 +2666,8 @@ pub struct ModifierElement {
     pub modifier: Box<Option<String>>,
     pub start_date: Box<Option<String>>,
     pub decay: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2259,12 +2675,16 @@ pub struct Sectors {
     pub owned: Box<Option<Vec<Number>>>,
     pub monthly_transfer: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
     pub resources: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CountryShipDesignCollection {
     pub ship_design: Box<Option<Vec<Number>>>,
     pub auto_gen_design: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2283,6 +2703,8 @@ pub struct TechStatus {
     pub physics_queue: Box<Option<Vec<EngineeringQueueElement>>>,
     pub always_available_tech: Box<Option<RequiredComponentUnion>>,
     pub stored_techpoints_for_tech: Box<Option<StoredTechpointsForTech>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2290,6 +2712,8 @@ pub struct Alternatives {
     pub society: Box<Option<Vec<String>>>,
     pub engineering: Box<Option<Vec<String>>>,
     pub physics: Box<Option<Vec<String>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2298,6 +2722,8 @@ pub struct EngineeringQueueElement {
     pub date: Box<Option<String>>,
     pub progress: Box<Option<Number>>,
     pub special_project: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2316,6 +2742,8 @@ pub struct StoredTechpointsForTech {
     pub tech_ship_armor_2: Box<Option<Number>>,
     pub tech_space_mining_2: Box<Option<Number>>,
     pub tech_space_whale_weapon_1: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2323,11 +2751,15 @@ pub struct TerraIncognita {
     pub systems: Box<Option<Vec<Number>>>,
     pub size: Box<Option<Number>>,
     pub data: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CountryTimedModifier {
     pub items: Box<Option<Vec<PurpleItem>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2335,6 +2767,15 @@ pub struct PurpleItem {
     pub modifier: Box<Option<String>>,
     pub days: Box<Option<Number>>,
     pub multiplier: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum DebrisOrValue {
+    Debris(Debris),
+    Nil(serde_json::Value),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2346,6 +2787,8 @@ pub struct Debris {
     pub ship_size: Box<Option<Vec<String>>>,
     pub from_country: Box<Option<Number>>,
     pub country: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2367,28 +2810,138 @@ pub struct DepositClass {
     pub planet: Box<Option<Number>>,
     #[serde(rename = "type")]
     pub deposit_type: Box<Option<String>>,
-    pub swap_type: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EspionageOperations {
-    pub operations: Box<Option<Vec<Box<Option<serde_json::Value>>>>>,
+    pub operations: Option<VecOrMap<OperationValue>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum OperationValue {
+    OperationClass(OperationClass),
+    String(String),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OperationClass {
+    pub target: Option<DataClass>,
+    pub spy_network: Option<Number>,
+    #[serde(rename = "type")]
+    pub operation_type: Option<String>,
+    pub index: Option<Number>,
+    pub last_roll: Option<Number>,
+    pub days_left: Option<Number>,
+    pub difficulty: Option<Number>,
+    pub info: Option<Number>,
+    pub log: Option<Vec<OperationLog>>,
+    pub assigned_assets: Option<Vec<Number>>,
+    pub completed: Option<Vec<OperationCompleted>>,
+    pub events: Option<Vec<OperationEvent>>,
+    pub flags: Option<OperationFlags>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DataClass {
+    #[serde(rename = "type")]
+    pub target_type: Option<String>,
+    pub id: Option<Number>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OperationCompleted {
+    pub date: Option<String>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OperationEvent {
+    pub expired: Option<String>,
+    pub event_id: Option<String>,
+    pub scope: Option<PurpleScope>,
+    pub name: Option<String>,
+    pub desc: Option<String>,
+    pub effect: Option<String>,
+    pub picture: Option<String>,
+    pub index: Option<Number>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PurpleScope {
+    #[serde(rename = "type")]
+    pub scope_type: Option<String>,
+    pub id: Option<Number>,
+    pub random: Option<Vec<Number>>,
+    pub random_allowed: Option<String>,
+    pub from: Box<Option<EventRoot>>,
+    pub prev: Box<Option<EventRoot>>,
+    pub saved_event_target: Option<SavedEventTarget>,
+    pub root: Box<Option<EventRoot>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EventRoot {
+    #[serde(rename = "type")]
+    pub scope_type: Option<String>,
+    pub id: Option<Number>,
+    pub random: Option<Vec<Number>>,
+    pub random_allowed: Option<String>,
+    pub from: Option<From>,
+    pub saved_event_target: Option<SavedEventTarget>,
+    pub root: Box<Option<EventRoot>>,
+    pub prev: Option<PurpleScope>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SavedEventTarget {
+    #[serde(rename = "type")]
+    pub saved_event_target_type: Option<String>,
+    pub id: Option<Number>,
+    pub name: Option<String>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OperationFlags {
+    pub operation_random_event_fired: Option<AsteroidSightedPreFtlGlobal>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OperationLog {
+    pub title: Option<String>,
+    pub tooltip: Option<String>,
+    pub roll: Option<Number>,
+    pub skill: Option<Number>,
+    pub info: Option<Number>,
+    pub difficulty: Option<f64>,
+    pub date: Option<String>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Federation {
-    #[serde(rename = "0")]
-    pub the_0: Box<Option<The0>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct The0 {
-    pub leader: Box<Option<Number>>,
-    pub name: Box<Option<The0Name>>,
-    pub start_date: Box<Option<String>>,
-    pub ship_design_collection: Box<Option<The0ShipDesignCollection>>,
-    pub federation_progression: Box<Option<FederationProgression>>,
-    pub members: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2415,6 +2968,8 @@ pub struct FederationProgression {
     pub timed_modifier: Box<Option<FederationProgressionTimedModifier>>,
     pub cohesion: Box<Option<Number>>,
     pub equal_voting_power: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2424,17 +2979,23 @@ pub struct ActionSettings {
     pub action_ask_to_leave_federation: Box<Option<Action>>,
     pub action_kick_from_federation: Box<Option<Action>>,
     pub action_offer_peace: Box<Option<Action>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Action {
     pub acceptance_type: Box<Option<String>>,
     pub vote_type: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FederationProgressionFlags {
     pub enable_federation_cooldowns: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2452,6 +3013,8 @@ pub struct Laws {
     pub law_category_build_fleets: Box<Option<String>>,
     pub law_category_succession_type: Box<Option<String>>,
     pub law_category_war_declaration_vote: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2459,45 +3022,53 @@ pub struct Perk {
     pub level: Box<Option<Number>>,
     #[serde(rename = "type")]
     pub perk_type: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FederationProgressionTimedModifier {
     pub items: Box<Option<Vec<FluffyItem>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FluffyItem {
     pub modifier: Box<Option<String>>,
     pub days: Box<Option<Number>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct The0Name {
-    pub variables: Box<Option<Vec<IndecentVariable>>>,
-    pub key: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IndecentVariable {
     pub key: Box<Option<String>>,
     pub value: Box<Option<TentacledValue>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TentacledValue {
     pub variables: Box<Option<Vec<IndigoVariable>>>,
     pub key: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct The0ShipDesignCollection {
     pub ship_design: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FirstContacts {
     pub contacts: Box<Option<VecOrMap<Contact>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2518,12 +3089,16 @@ pub struct Contact {
     pub date: Box<Option<String>>,
     pub name: Box<Option<LastAllianceName>>,
     pub event: Box<Option<Event>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Completed {
     pub stage: Box<Option<String>>,
     pub date: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2533,6 +3108,8 @@ pub struct Event {
     pub picture: Box<Option<String>>,
     pub index: Box<Option<Number>>,
     pub scope: Box<Option<EventScope>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2545,6 +3122,8 @@ pub struct EventScope {
     pub from: Box<Box<Option<FromClass>>>,
     pub prev: Box<Box<Option<TentacledPrev>>>,
     pub random: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2556,8 +3135,9 @@ pub struct ScopeRoot {
     pub random_allowed: Box<Option<String>>,
     pub saved_event_target: Box<Option<SavedEventTargetUnion>>,
     pub from: Box<Box<Option<FromClass>>>,
-    pub variables: Box<Option<ScopeVariables>>,
     pub root: Box<Box<Option<RootRoot>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2569,6 +3149,8 @@ pub struct RootRoot {
     #[serde(rename = "type")]
     pub root_type: Box<Option<String>>,
     pub id: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2580,302 +3162,8 @@ pub struct ContactFlags {
     pub tiyanki_first_contact: Box<Option<Number>>,
     pub marauders_first_contact: Box<Option<Number>>,
     pub caravaneers_first_contact: Box<Option<Number>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct GamestateFlags {
-    pub nsc_modmenu_game_content_starbase_building_cloning_facilities_on: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_NSC_BOMBARDMENT_2_on")]
-    pub nsc_modmenu_game_content_ship_component_nsc_bombardment_2_on: Box<Option<Number>>,
-    pub compressor_capped_u: Box<Option<Number>>,
-    pub megabase_capped_u: Box<Option<Number>>,
-    pub asteroid_artillery_capped_u: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_security_branch_office_on: Box<Option<Number>>,
-    pub terraform_toxic_capped_u: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_nsc_nanite_field_on: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_BATTLESHIP_SNIPER_GUN_2_on")]
-    pub nsc_modmenu_game_content_ship_component_battleship_sniper_gun_2_on: Box<Option<Number>>,
-    pub giga_blokkats_deathmode: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_storage_room_on: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_HARPOON_CRUISE_MISSILE_on")]
-    pub nsc_modmenu_game_content_ship_component_harpoon_cruise_missile_on: Box<Option<Number>>,
-    pub giga_game_started_real: Box<Option<Number>>,
-    pub galactic_community_founded: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_solar_capacitor_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_repair_module_on: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_READY_ROOM_on")]
-    pub nsc_modmenu_game_content_ship_component_special_slot_ready_room_on: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_NSC_PD_MISSILE_on")]
-    pub nsc_modmenu_game_content_ship_component_nsc_pd_missile_on: Box<Option<Number>>,
-    pub planetshipyard_capped_u: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_SURVEY_LAB_on")]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_survey_lab_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_strategic_defenses_on: Box<Option<Number>>,
-    #[serde(
-        rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_MULTIPHASIC_SENSORS_on"
-    )]
-    pub nsc_modmenu_game_content_ship_component_special_slot_multiphasic_sensors_on:
-        Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_AUXILIARY_SHIELDS_on")]
-    pub nsc_modmenu_game_content_ship_component_special_slot_auxiliary_shields_on:
-        Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_farming_base_on: Box<Option<Number>>,
-    pub asteroid_manufactory_capped_u: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_shield_module_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_etc_feature_matterenergy_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_customs_office_on: Box<Option<Number>>,
-    pub giga_fe_megas_spawned: Box<Option<Number>>,
-    pub gigaforge_capped_u: Box<Option<Number>>,
-    pub psychic_beacon_capped_1: Box<Option<Number>>,
-    #[serde(
-        rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_NAVIGATIONAL_ARRAY_on"
-    )]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_navigational_array_on:
-        Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_NSC_REACTOR_BOOSTER_1_on")]
-    pub nsc_modmenu_game_content_ship_component_nsc_reactor_booster_1_on: Box<Option<Number>>,
-    #[serde(
-        rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_STELLAR_CARTOGRAPHY_on"
-    )]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_stellar_cartography_on:
-        Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_class_Dreadnought_on")]
-    pub nsc_modmenu_game_content_ship_class_dreadnought_on: Box<Option<Number>>,
-    pub cityring_capped_u: Box<Option<Number>>,
-    pub birch_capped_1: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_NSC_BOMBARDMENT_1_on")]
-    pub nsc_modmenu_game_content_ship_component_nsc_bombardment_1_on: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_DAMAGE_CONTROL_on")]
-    pub nsc_modmenu_game_content_ship_component_special_slot_damage_control_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_synthetic_crystal_fabricator_on:
-        Box<Option<Number>>,
-    pub sofe_activated: Box<Option<Number>>,
-    pub already_warned_about_new_megas: Box<Option<Number>>,
-    #[serde(
-        rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_ENGINEERING_LAB_on"
-    )]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_engineering_lab_on:
-        Box<Option<Number>>,
-    pub pouchkinn_gatzo_fe: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_ship_class_headquarters_on: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_DEBRIS_LAB_on")]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_debris_lab_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_mining_manager_on: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_MARS_WEAPON_SYSTEM_on")]
-    pub nsc_modmenu_game_content_ship_component_special_slot_mars_weapon_system_on:
-        Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_TOMAHAWK_CRUISE_MISSILE_on")]
-    pub nsc_modmenu_game_content_ship_component_tomahawk_cruise_missile_on: Box<Option<Number>>,
-    pub giga_habitats_unlimited: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_FIRE_CONTROL_on")]
-    pub nsc_modmenu_game_content_ship_component_special_slot_fire_control_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_class_headquarters_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_starbase_ai_on: Box<Option<Number>>,
-    pub shipyard_capped_u: Box<Option<Number>>,
-    pub galactic_community_resolution_passed: Box<Option<Number>>,
-    pub origin_drow_subterranean_inception_used: Box<Option<Number>>,
-    pub siphon_capped_1: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_sensor_station_on: Box<Option<Number>>,
-    pub vanilla_ringworld_capped_u: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_class_outpost_on: Box<Option<Number>>,
-    pub acot_override_activated: Box<Option<Number>>,
-    pub gray_goo_empire_set: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_real_estate_dev_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_construction_office_on: Box<Option<Number>>,
-    pub gigastructures_enabled: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_nightclub_on: Box<Option<Number>>,
-    pub vanilla_interstellar_capped_1: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_robot_assembly_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_navcom_ai_on: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_STRIKE_CRAFT_on")]
-    pub nsc_modmenu_game_content_ship_component_special_slot_strike_craft_on: Box<Option<Number>>,
-    pub enable_united_fleet_shipsets: Box<Option<Number>>,
-    pub vanilla_array_capped_1: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_armor_module_on: Box<Option<Number>>,
-    pub quasistellar_capped_1: Box<Option<Number>>,
-    pub terraform_barren_capped_u: Box<Option<Number>>,
-    pub machinering_capped_u: Box<Option<Number>>,
-    pub will_berserk_caretaker: Box<Option<Number>>,
-    pub vanilla_dyson_capped_u: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_etc_feature_mothball_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_etc_feature_hyperlane_generation_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_synthetic_gase_fabricator_on:
-        Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_public_plaza_on: Box<Option<Number>>,
-    #[serde(
-        rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_STRUCTURAL_INTEGRITY_on"
-    )]
-    pub nsc_modmenu_game_content_ship_component_special_slot_structural_integrity_on:
-        Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_ANOMALY_LAB_on")]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_anomaly_lab_on:
-        Box<Option<Number>>,
-    pub spawn_caravaneer_1: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_NSC_REACTOR_BOOSTER_3_on")]
-    pub nsc_modmenu_game_content_ship_component_nsc_reactor_booster_3_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_xl_battery_on: Box<Option<Number>>,
-    pub has_nsc_active: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_federal_reserve_bank_on: Box<Option<Number>>,
-    pub game_started: Box<Option<Number>>,
-    pub giga_dyson_scaling: Box<Option<Number>>,
-    pub giga_buildcap_u: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_ship_class_explorationship_on: Box<Option<Number>>,
-    pub giga_game_started: Box<Option<Number>>,
-    pub systemcraft_capped_u: Box<Option<Number>>,
-    pub vanilla_matter_capped_1: Box<Option<Number>>,
-    pub kugel_capped_u: Box<Option<Number>>,
-    pub hyperstructural_ass_capped_u: Box<Option<Number>>,
-    pub ehof_ai_capped_1: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_mining_base_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_tv_studio_on: Box<Option<Number>>,
-    pub giga_has_host: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_large_battery_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_power_station_on: Box<Option<Number>>,
-    pub vanilla_shipyard_capped_1: Box<Option<Number>>,
-    pub giga_fe_megas_set_up: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_PHYSICS_LAB_on")]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_physics_lab_on:
-        Box<Option<Number>>,
-    pub upgrade_capped_u: Box<Option<Number>>,
-    pub giga_lifter_scaling: Box<Option<Number>>,
-    pub hivering_capped_u: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_ALLOY_REFINERY_on")]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_alloy_refinery_on:
-        Box<Option<Number>>,
-    pub giga_galactic_fed_shuffle: Box<Option<Number>>,
-    pub giga_menu_initial_settings_done: Box<Option<Number>>,
-    pub fumongus_spawned: Box<Option<Number>>,
-    pub glue_capped_u: Box<Option<Number>>,
-    pub loris_portrait_exists: Box<Option<Number>>,
-    pub nidavellir_capped_u: Box<Option<Number>>,
-    pub medium_acot: Box<Option<Number>>,
-    #[serde(
-        rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_STELLAR_CARTOGRAPHY_on"
-    )]
-    pub nsc_modmenu_game_content_ship_component_special_slot_stellar_cartography_on:
-        Box<Option<Number>>,
-    pub xenophile_second_riddle_randomed: Box<Option<Number>>,
-    pub maginot_capped_u: Box<Option<Number>>,
-    pub origin_remnants_used: Box<Option<Number>>,
-    pub ehof_compatibility: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_ground_forces_academy_on: Box<Option<Number>>,
-    pub forcefully_devolved_pre_ftl_rolled: Box<Option<Number>>,
-    pub galcom_founding_begun: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_etc_feature_galactic_mall_on: Box<Option<Number>>,
-    pub planetary_computer_capped_u: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_DEFLECTOR_ARRAY_on")]
-    pub nsc_modmenu_game_content_ship_component_special_slot_deflector_array_on:
-        Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_asteroid_mining_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_adv_starbase_defenses_on: Box<Option<Number>>,
-    pub matrioshka_brain_capped_u: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_fleet_club_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_space_factory_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_synthetic_volatile_motes_fabricator_on:
-        Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_NAVIGATIONAL_ARRAY_on")]
-    pub nsc_modmenu_game_content_ship_component_special_slot_navigational_array_on:
-        Box<Option<Number>>,
-    pub spawn_caravaneer_2: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_BATTLESHIP_SNIPER_GUN_1_on")]
-    pub nsc_modmenu_game_content_ship_component_battleship_sniper_gun_1_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_public_market_on: Box<Option<Number>>,
-    pub ndb_capped_1: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_SOLAR_ARRAY_on")]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_solar_array_on:
-        Box<Option<Number>>,
-    pub giga_fe_planetcrafts_1: Box<Option<Number>>,
-    pub giga_core_aeternum_2: Box<Option<Number>>,
-    pub forerunner_mod_active: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_pd_battery_on: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_class_Carrier_on")]
-    pub nsc_modmenu_game_content_ship_class_carrier_on: Box<Option<Number>>,
-    pub orchid_capped_u: Box<Option<Number>>,
-    pub the_vat_capped_u: Box<Option<Number>>,
-    pub pyorun_czyrni_surveyed: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_drydock_on: Box<Option<Number>>,
-    pub vanilla_strategic_capped_1: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_tv_network_on: Box<Option<Number>>,
-    pub orbital_artificial_eco_capped_u: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_class_Flagship_on")]
-    pub nsc_modmenu_game_content_ship_class_flagship_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_titanic_battery_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_assembly_line_manufacturing_on:
-        Box<Option<Number>>,
-    pub vanilla_art_capped_1: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_space_foundry_on: Box<Option<Number>>,
-    pub acot_activated: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_NSC_BOMBARDMENT_3_on")]
-    pub nsc_modmenu_game_content_ship_component_nsc_bombardment_3_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_artifact_silo_on: Box<Option<Number>>,
-    pub warmoon_capped_u: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_KITCHEN_SINK_on")]
-    pub nsc_modmenu_game_content_ship_component_special_slot_kitchen_sink_on: Box<Option<Number>>,
-    #[serde(
-        rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_QUANTUM_THRUSTERS_on"
-    )]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_quantum_thrusters_on:
-        Box<Option<Number>>,
-    pub vanilla_nexus_capped_1: Box<Option<Number>>,
-    pub nuclear_war_pre_ftl_global: Box<Option<AsteroidSightedPreFtlGlobal>>,
-    pub nsc_on_press_begin: Box<Option<Number>>,
-    pub accelerator_capped_u: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_NSC_REACTOR_BOOSTER_2_on")]
-    pub nsc_modmenu_game_content_ship_component_nsc_reactor_booster_2_on: Box<Option<Number>>,
-    pub giga_rings_gar: Box<Option<Number>>,
-    pub alderson_capped_u: Box<Option<Number>>,
-    pub hraemc_capped_u: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_module_solar_panel_on: Box<Option<Number>>,
-    pub succ_capped_u: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_QUANTUM_THRUSTERS_on")]
-    pub nsc_modmenu_game_content_ship_component_special_slot_quantum_thrusters_on:
-        Box<Option<Number>>,
-    pub giga_core_shuffle: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_etc_feature_hospital_on: Box<Option<Number>>,
-    pub giga_versioned: Box<Option<Number>>,
-    pub dietrich_portrait_exists: Box<Option<Number>>,
-    pub orbital_arcologies_capped_u: Box<Option<Number>>,
-    pub meopa_spawned_as_fe: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_SPECIAL_SLOT_CREW_LOUNGE_on")]
-    pub nsc_modmenu_game_content_ship_component_special_slot_crew_lounge_on: Box<Option<Number>>,
-    pub warplanet_capped_u: Box<Option<Number>>,
-    pub galactic_focus_pass_a_resolution_completed: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_starbase_management_on: Box<Option<Number>>,
-    pub terraform_gasgiant_capped_u: Box<Option<Number>>,
-    pub penrose_sphere_capped_u: Box<Option<Number>>,
-    pub set_ast_art_max_points: Box<Option<Number>>,
-    pub acot_defines_activated: Box<Option<Number>>,
-    pub origin_here_be_dragons_used: Box<Option<Number>>,
-    pub academy_capped_u: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_class_StrikeCruiser_on")]
-    pub nsc_modmenu_game_content_ship_class_strike_cruiser_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_building_reinforced_defenses_on: Box<Option<Number>>,
-    pub nsc_modmenu_game_content_starbase_class_stronghold_on: Box<Option<Number>>,
-    pub suppressor_capped_u: Box<Option<Number>>,
-    pub geothermal_capped_u: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_SOCIETY_LAB_on")]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_society_lab_on:
-        Box<Option<Number>>,
-    pub stellarhabitat_capped_u: Box<Option<Number>>,
-    pub disco_moon_capped_u: Box<Option<Number>>,
-    #[serde(
-        rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_MINING_FACILITY_on"
-    )]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_mining_facility_on:
-        Box<Option<Number>>,
-    pub asteroid_sighted_pre_ftl_global: Box<Option<AsteroidSightedPreFtlGlobal>>,
-    pub drill_capped_u: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_component_EXPLORATION_SLOT_ANALYSIS_LAB_on")]
-    pub nsc_modmenu_game_content_ship_component_exploration_slot_analysis_lab_on:
-        Box<Option<Number>>,
-    pub acot_live_version: Box<Option<Number>>,
-    pub xenophobe_riddle_randomed: Box<Option<Number>>,
-    pub giga_matroishka_scaling: Box<Option<Number>>,
-    pub lifters_capped_u: Box<Option<Number>>,
-    pub crystal_capped_u: Box<Option<Number>>,
-    #[serde(rename = "nsc_modmenu_game_content_ship_class_Battlecruiser_on")]
-    pub nsc_modmenu_game_content_ship_class_battlecruiser_on: Box<Option<Number>>,
-    pub compound_disabled: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2890,8 +3178,8 @@ pub struct PurpleFleet {
     pub civilian: Box<Option<String>>,
     pub ground_support_stance: Box<Option<String>>,
     pub combat: Box<Option<Combat>>,
-    pub movement_manager: Box<Option<MovementManager>>,
-    pub current_order: Box<Option<CurrentOrder>>,
+    pub movement_manager: Box<Option<VecOrStruct<MovementManager>>>,
+    pub current_order: Box<Option<VecOrStruct<CurrentOrder>>>,
     pub is_cloaked: Box<Option<String>>,
     pub fleet_stats: Box<Option<FleetStats>>,
     pub cached_disengaged_ships: Box<Option<Number>>,
@@ -2914,21 +3202,24 @@ pub struct PurpleFleet {
     pub aggro_range_measure_from: Box<Option<Number>>,
     pub aggro_range: Box<Option<Number>>,
     pub action_initialized: Box<Option<String>>,
-    pub actions: Box<Option<Actions>>,
+    pub actions: Box<Option<VecOrStruct<Actions>>>,
     pub flags: Box<Option<VecOrMap<Number>>>,
     pub strike_craft: Box<Option<FleetStrikeCraft>>,
     pub experience: Box<Option<Experience>>,
-    pub missile: Box<Option<FleetMissile>>,
+    pub missile: Box<Option<VecOrStruct<FleetMissile>>>,
     pub timed_modifier: Box<Option<FederationProgressionTimedModifier>>,
-    pub variables: Box<Option<FleetVariables>>,
-    pub mission: Box<Option<Mission>>,
+    pub mission: Box<Option<VecOrStruct<Mission>>>,
     pub incoming_merges: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Actions {
     pub repeat: Box<Option<Repeat>>,
     pub wait: Box<Option<CurrentWait>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2938,12 +3229,16 @@ pub struct Repeat {
     pub scope: Box<Option<RepeatScope>>,
     pub iterations: Box<Option<Number>>,
     pub current: Box<Option<RepeatCurrent>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RepeatCurrent {
     pub find_planet: Box<Option<CurrentFindPlanet>>,
     pub wait: Box<Option<CurrentWait>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2953,6 +3248,8 @@ pub struct CurrentFindPlanet {
     pub index: Box<Option<Number>>,
     pub current: Box<Option<FindPlanetCurrent>>,
     pub data: Box<Option<FindPlanetElement>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2960,26 +3257,36 @@ pub struct FindPlanetCurrent {
     pub orbit_planet: Box<Option<OrbitPlanet>>,
     pub move_to: Box<Option<MoveTo>>,
     pub wait: Box<Option<CurrentWait>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MoveTo {
     pub coordinate: Box<Option<Position>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct OrbitPlanet {
     pub orbitable: Box<Option<StarClass>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StarClass {
     pub planet: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CurrentWait {
     pub time: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2987,6 +3294,8 @@ pub struct FindPlanetElement {
     pub method: Box<Option<String>>,
     pub trigger: Box<Option<String>>,
     pub found_planet: Box<Option<DataFoundPlanet>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2994,6 +3303,8 @@ pub struct DataFoundPlanet {
     pub orbit_planet: Box<Option<String>>,
     pub move_to: Box<Option<String>>,
     pub wait: Box<Option<FoundPlanetWait>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3007,6 +3318,8 @@ pub enum FoundPlanetWait {
 pub struct WaitWait {
     pub duration: Box<Option<Number>>,
     pub random: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3019,6 +3332,8 @@ pub struct FindPlanetScope {
     pub random_allowed: Box<Option<String>>,
     pub from: Box<Option<From>>,
     pub prev: Box<Option<StickyPrev>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3031,6 +3346,8 @@ pub struct From {
     pub id: Box<Option<Number>>,
     pub prev: Box<Box<Option<FromClass>>>,
     pub from: Box<Box<Option<FromClass>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3044,6 +3361,8 @@ pub struct StickyPrev {
     pub from: Box<Option<From>>,
     pub prev: Box<Option<IndigoPrev>>,
     pub saved_event_target: Box<Option<Vec<SavedEventTargetElement>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3057,6 +3376,8 @@ pub struct IndigoPrev {
     pub from: Box<Box<Option<FromClass>>>,
     pub root: Box<Box<Option<FromClass>>>,
     pub prev: Box<Option<PoiScope>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3064,6 +3385,8 @@ pub struct Data {
     pub find_planet: Box<Option<FindPlanetUnion>>,
     pub max_iterations: Box<Option<Number>>,
     pub wait: Box<Option<DataWait>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3077,6 +3400,8 @@ pub enum FindPlanetUnion {
 pub struct PurpleFindPlanet {
     pub found_planet: Box<Option<PurpleFoundPlanet>>,
     pub method: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3084,6 +3409,8 @@ pub struct PurpleFoundPlanet {
     pub move_to: Box<Option<String>>,
     pub orbit_planet: Box<Option<String>>,
     pub wait: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3104,6 +3431,8 @@ pub struct RepeatScope {
     pub root: Box<Option<From>>,
     pub random: Box<Option<Vec<Number>>>,
     pub random_allowed: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3117,6 +3446,8 @@ pub struct IndecentPrev {
     pub prev_type: Box<Option<String>>,
     pub id: Box<Option<Number>>,
     pub saved_event_target: Box<Option<Vec<SavedEventTargetElement>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3130,6 +3461,8 @@ pub struct HilariousPrev {
     pub root: Box<Option<From>>,
     pub prev: Box<Option<PoiScope>>,
     pub from: Box<Option<From>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3139,6 +3472,8 @@ pub struct AutoMovement {
     pub has_arrived: Box<Option<String>>,
     pub clear_on_new_orders: Box<Option<String>>,
     pub auto_move_target: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3149,6 +3484,8 @@ pub struct Combat {
     pub start_coordinate: Box<Option<Position>>,
     pub start_date: Box<Option<String>>,
     pub in_combat_with: Box<Option<Vec<InCombatWith>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3156,6 +3493,8 @@ pub struct CombatFormation {
     pub root: Box<Option<Number>>,
     pub parent: Box<Option<Vec<Number>>>,
     pub ships: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3166,12 +3505,16 @@ pub struct FormationPos {
     pub x: Box<Option<Number>>,
     pub rotation: Box<Option<Number>>,
     pub speed: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InCombatWith {
     pub fleet: Box<Option<Number>>,
     pub debris: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3189,6 +3532,8 @@ pub struct CurrentOrder {
     pub return_fleet_order: Box<Option<ReturnFleetOrder>>,
     pub colonize_planet_order: Box<Option<Order>>,
     pub merge_fleet_order: Box<Option<MergeFleetOrder>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3199,17 +3544,23 @@ pub struct AggressiveStanceFleetOrder {
     pub can_reach: Box<Option<String>>,
     pub bombard_target: Box<Option<Number>>,
     pub sub_order: Box<Option<AggressiveStanceFleetOrderSubOrder>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ReturnCoordinateClass {
     pub coordinate: Box<Option<Position>>,
     pub target: Box<Option<Owner>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AggressiveStanceFleetOrderSubOrder {
     pub follow_order: Box<Option<FollowOrder>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3219,6 +3570,8 @@ pub struct FollowOrder {
     pub attack_when_in_range: Box<Option<String>>,
     pub coordinate: Box<Option<Position>>,
     pub order_id: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3226,6 +3579,8 @@ pub struct AssistResearchOrder {
     pub can_reach: Box<Option<String>>,
     pub planet: Box<Option<Number>>,
     pub order_id: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3240,6 +3595,8 @@ pub struct BuildOrbitalStationOrder {
     pub can_reach: Box<Option<String>>,
     pub resources: Box<Option<BuildOrbitalStationOrderResources>>,
     pub sub_order: Box<Option<BuildOrbitalStationOrderSubOrder>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3247,17 +3604,23 @@ pub struct BuildOrbitalStationOrderResources {
     pub minerals: Box<Option<Number>>,
     pub alloys: Box<Option<Number>>,
     pub influence: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BuildOrbitalStationOrderSubOrder {
     pub move_to_system_point_order: Box<Option<SubOrderMoveToSystemPointOrder>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SubOrderMoveToSystemPointOrder {
     pub coordinate: Box<Option<Position>>,
     pub can_reach: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3268,6 +3631,8 @@ pub struct EtOrder {
     pub special_project: Box<Option<Number>>,
     pub archaeological_site: Box<Option<Number>>,
     pub planet: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3278,6 +3643,8 @@ pub struct Order {
     pub can_reach: Box<Option<String>>,
     pub sub_order: Box<Option<ColonizePlanetOrderSubOrder>>,
     pub name: Box<Option<SpeciesAdjectiveClass>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3285,11 +3652,15 @@ pub struct SpeciesAdjectiveClass {
     pub key: Box<Option<String>>,
     pub variables: Box<Option<Vec<LastKilledCountryNameVariable>>>,
     pub literal: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ColonizePlanetOrderSubOrder {
     pub orbit_planet_order: Box<Option<CurrentOrderOrbitPlanetOrder>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3300,6 +3671,8 @@ pub struct CurrentOrderOrbitPlanetOrder {
     pub orbitable: Box<Option<StarClass>>,
     pub can_reach: Box<Option<String>>,
     pub order_id: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3309,6 +3682,8 @@ pub struct MergeFleetOrder {
     pub ordered_by: Box<Option<Number>>,
     pub sub_order: Box<Option<AggressiveStanceFleetOrderSubOrder>>,
     pub target: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3316,6 +3691,8 @@ pub struct CurrentOrderMoveToSystemPointOrder {
     pub coordinate: Box<Option<Position>>,
     pub order_id: Box<Option<Number>>,
     pub can_reach: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3325,11 +3702,15 @@ pub struct ReturnFleetOrder {
     pub exclude_allied: Box<Option<String>>,
     pub sub_order: Box<Option<ReturnFleetOrderSubOrder>>,
     pub home_base: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ReturnFleetOrderSubOrder {
     pub orbit_planet_order: Box<Option<PurpleOrbitPlanetOrder>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3339,16 +3720,22 @@ pub struct PurpleOrbitPlanetOrder {
     pub orbitable: Box<Option<BuildableColonyShipOrbitable>>,
     pub star: Box<Option<StarClass>>,
     pub sub_order: Box<Option<BuildOrbitalStationOrderSubOrder>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Experience {
     pub ships_killed: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FleetStats {
     pub combat_stats: Box<Option<CombatStats>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3360,6 +3747,8 @@ pub struct CombatStats {
     pub hit_ratio_outgoing: Box<Option<Vec<HitRatioIng>>>,
     pub hit_ratio_incoming: Box<Option<Vec<HitRatioIng>>>,
     pub damage_outgoing: Box<Option<Vec<DamageIng>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3372,6 +3761,8 @@ pub struct DamageIng {
     pub damage_hitpoints: Box<Option<Number>>,
     pub damage_shields: Box<Option<Number>>,
     pub base_damage_shields: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3387,6 +3778,8 @@ pub struct FleetElement {
     pub fleet_name: Box<Option<String>>,
     pub ship_size_count_lost: Box<Option<Vec<Number>>>,
     pub leader: Box<Option<FleetLeader>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3399,6 +3792,8 @@ pub struct FleetLeader {
     pub class: Box<Option<String>>,
     pub experience: Box<Option<Number>>,
     pub design: Box<Option<LeaderDesign>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3413,12 +3808,16 @@ pub struct LeaderDesign {
     #[serde(rename = "trait")]
     pub design_trait: Box<Option<String>>,
     pub heir_title_female: Box<Option<PluralClass>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FluffyName {
     pub use_full_regnal_name: Box<Option<String>>,
     pub full_names: Box<Option<LastKilledCountryName>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3436,16 +3835,22 @@ pub struct HitRatioIng {
     pub template: Box<Option<String>>,
     pub evades: Box<Option<Number>>,
     pub fleet_index: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FleetMissile {
     pub missile: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Mission {
     pub mission: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3462,6 +3867,8 @@ pub struct MovementManager {
     pub ftl_total_windup: Box<Option<Number>>,
     pub ftl_windup: Box<Option<Number>>,
     pub custom_formation: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3470,6 +3877,8 @@ pub struct MovementManagerFormation {
     pub formation_type: Box<Option<String>>,
     pub scale: Box<Option<Number>>,
     pub angle: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3480,6 +3889,8 @@ pub struct LastFtlJump {
     pub bypass_from: Box<Option<Number>>,
     pub fleet: Box<Option<Number>>,
     pub to: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3493,6 +3904,8 @@ pub enum OrbitUnion {
 pub struct OrbitClass {
     pub index: Box<Option<Number>>,
     pub orbitable: Box<Option<OrbitOrbitable>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3500,12 +3913,16 @@ pub struct OrbitOrbitable {
     pub planet: Box<Option<Number>>,
     pub starbase: Box<Option<Number>>,
     pub megastructure: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MovementManagerPath {
     pub date: Box<Option<String>>,
     pub node: Box<Option<NodeUnion>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3519,18 +3936,24 @@ pub enum NodeUnion {
 pub struct NodeElement {
     pub ftl: Box<Option<String>>,
     pub coordinate: Box<Option<Position>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FleetName {
     pub variables: Box<Option<Vec<HilariousVariable>>>,
     pub key: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HilariousVariable {
     pub value: Box<Option<PlanetName>>,
     pub key: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3538,12 +3961,16 @@ pub struct PlanetName {
     pub key: Box<Option<String>>,
     pub literal: Box<Option<String>>,
     pub variables: Box<Option<Vec<AmbitiousVariable>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AmbitiousVariable {
     pub key: Box<Option<String>>,
     pub value: Box<Option<StickyValue>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3551,18 +3978,24 @@ pub struct StickyValue {
     pub key: Box<Option<String>>,
     pub literal: Box<Option<String>>,
     pub variables: Box<Option<Vec<CunningVariable>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CunningVariable {
     pub value: Box<Option<SpeciesAdjectiveClass>>,
     pub key: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct OrderClass {
     pub build_orbital_station_order: Box<Option<Vec<BuildOrbitalStationOrder>>>,
     pub survey_planet_order: Box<Option<SurveyPlanetOrder>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3582,16 +4015,22 @@ pub struct Settings {
     pub can_change_leader: Box<Option<String>>,
     pub can_upgrade: Box<Option<String>>,
     pub can_disband: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FleetStrikeCraft {
     pub crafts: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FleetVariables {
     pub giga_asteroid_ship_id: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3610,17 +4049,23 @@ pub struct FleetTemplateClass {
     pub fleet_size: Box<Option<Number>>,
     pub fleet: Box<Option<Number>>,
     pub is_edited_by_human: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FleetTemplateDesign {
     pub design: Box<Option<Number>>,
     pub count: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HomeBase {
     pub orbitable: Box<Option<BuildableColonyShipOrbitable>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3636,11 +4081,15 @@ pub struct GalacticCommunity {
     pub category_timers: Box<Option<CategoryTimers>>,
     pub passed: Box<Option<Vec<Number>>>,
     pub voting: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CategoryTimers {
     pub resolution_category_wexternal: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3675,8 +4124,9 @@ pub struct GalacticObject {
     pub init_parent: Box<Option<Number>>,
     pub ftl_inhibitor_presence: Box<Option<Vec<Number>>>,
     pub timed_modifier: Box<Option<FederationProgressionTimedModifier>>,
-    pub variables: Box<Option<GalacticObjectVariables>>,
     pub orbital_line: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3684,6 +4134,8 @@ pub struct AsteroidBelt {
     pub inner_radius: Box<Option<Number>>,
     #[serde(rename = "type")]
     pub asteroid_belt_type: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3691,6 +4143,8 @@ pub struct Hyperlane {
     pub length: Box<Option<Number>>,
     pub to: Box<Option<Number>>,
     pub bridge: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3703,12 +4157,16 @@ pub enum TradeCollectionUnion {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TradeCollectionClass {
     pub targets: Box<Option<Vec<TargetElement>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TargetElement {
     pub distance: Box<Option<Number>>,
     pub target: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3717,6 +4175,8 @@ pub struct TradeHub {
     pub destination: Box<Option<Number>>,
     pub sources: Box<Option<Vec<Number>>>,
     pub collected_from: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3727,11 +4187,15 @@ pub struct TradePiracy {
     pub max: Box<Option<Number>>,
     pub total: Box<Option<Number>>,
     pub targets: Box<Option<Vec<TargetElement>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GalacticObjectVariables {
     pub current_giga_asteroid_id: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3774,6 +4238,8 @@ pub struct Galaxy {
     pub ironman: Box<Option<String>>,
     pub num_gateways: Box<Option<Number>>,
     pub difficulty_adjusted_ai_modifiers: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3803,6 +4269,8 @@ pub struct DesignElement {
     pub empire_flag: Box<Option<Flag>>,
     pub flags: Box<Option<Vec<String>>>,
     pub secondary_species: Box<Option<SecondarySpecies>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3810,6 +4278,8 @@ pub struct TentacledName {
     pub key: Box<Option<String>>,
     pub literal: Box<Option<String>>,
     pub variables: Box<Option<Vec<LastAllianceNameVariable>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3828,6 +4298,8 @@ pub struct Ruler {
     pub heir_title: Box<Option<RulerTitleFemaleClass>>,
     pub ruler_title_female: Box<Option<RulerTitleFemaleClass>>,
     pub custom_biography: Box<Option<PluralClass>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3841,6 +4313,8 @@ pub struct SecondarySpecies {
     pub class: Box<Option<String>>,
     #[serde(rename = "trait")]
     pub secondary_species_trait: Box<Option<Vec<String>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3855,18 +4329,24 @@ pub struct DesignSpecies {
     pub class: Box<Option<String>>,
     pub species_plural: Box<Option<PluralClass>>,
     pub species_bio: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GlobalShipDesign {
     pub name: Box<Option<RulerTitleFemaleClass>>,
     pub ship_design: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroundCombat {
     #[serde(rename = "50331648")]
     pub the_50331648: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3894,7 +4374,6 @@ pub struct LeaderLeader {
     pub portrait: Box<Option<String>>,
     pub recruitment_date: Box<Option<String>>,
     pub gender: Box<Option<String>>,
-    pub variables: Box<Option<LeaderVariables>>,
     pub location: Box<Option<Location>>,
     pub job: Box<Option<String>>,
     pub cooldown: Box<Option<Number>>,
@@ -3907,6 +4386,8 @@ pub struct LeaderLeader {
     pub immortal: Box<Option<String>>,
     pub date_added: Box<Option<String>>,
     pub external: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3916,12 +4397,16 @@ pub struct Location {
     pub assignment: Box<Option<String>>,
     pub area: Box<Option<String>>,
     pub id: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LeaderFlags {
     pub leader_death_events_blocked: Box<Option<Number>>,
     pub fe_pouchkinn_leader: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3929,6 +4414,8 @@ pub struct LeaderName {
     pub use_full_regnal_name: Box<Option<String>>,
     pub full_names: Box<Option<LastKilledCountryName>>,
     pub regnal_number: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3936,6 +4423,8 @@ pub struct LeaderVariables {
     pub leader_pending_negative_traits_unmodified: Box<Option<Number>>,
     pub ruler_age_mod: Box<Option<Number>>,
     pub heir_age_mod: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3946,50 +4435,97 @@ pub struct Market {
     pub id: Box<Option<Vec<Number>>>,
     pub resources_bought: Box<Option<Resources>>,
     pub internal_market_fluctuations: Box<Option<InternalMarketFluctuations>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InternalMarketFluctuations {
     pub country: Box<Option<Vec<Number>>>,
     pub resources: Box<Option<Vec<PopCategoryXenoWardElement>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Resources {
     pub amount: Box<Option<Vec<Vec<Number>>>>,
     pub country: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+// #[derive(Debug, Serialize, Deserialize, Clone)]
+// pub struct Megastructure {
+//     pub build_queue: Box<Option<Number>>,
+//     pub planet: Box<Option<Number>>,
+//     pub orbitals: Box<Option<VecOrStruct<Orbitals>>>,
+//     #[serde(rename = "type")]
+//     pub megastructure_type: Box<Option<String>>,
+//     pub coordinate: Box<Option<Position>>,
+//     pub owner: Box<Option<Number>>,
+//     pub bypass: Box<Option<Number>>,
+//     pub graphical_culture: Box<Option<String>>,
+//     pub variables: Box<Option<VecOrStruct<MegastructureVariables>>>,
+//     pub flags: Box<Option<VecOrStruct<MegastructureFlags>>>,
+// }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Megastructure {
+    #[serde(rename = "type")]
+    pub megastructure_type: Option<String>,
+    pub coordinate: Option<Position>,
+    pub owner: Option<Number>,
+    pub planet: Option<Number>,
+    pub orbitals: Option<Orbitals>,
+    pub build_queue: Option<Number>,
+    pub bypass: Option<Number>,
+    pub upgrade: Option<Upgrade>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Megastructure {
-    pub build_queue: Box<Option<Number>>,
-    pub planet: Box<Option<Number>>,
-    pub orbitals: Box<Option<Orbitals>>,
-    #[serde(rename = "type")]
-    pub megastructure_type: Box<Option<String>>,
-    pub coordinate: Box<Option<Position>>,
-    pub owner: Box<Option<Number>>,
-    pub bypass: Box<Option<Number>>,
-    pub graphical_culture: Box<Option<String>>,
-    pub variables: Box<Option<MegastructureVariables>>,
-    pub flags: Box<Option<MegastructureFlags>>,
+pub struct TimedModifiersClass {
+    pub items: Option<Vec<TimedModifiersItem>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TimedModifiersItem {
+    pub modifier: Option<String>,
+    pub days: Option<Number>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Upgrade {
+    pub upgrade_to: Option<String>,
+    pub progress: Option<f64>,
+    pub halted: Option<i64>,
+    pub indefinitely_halted: Option<String>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MegastructureFlags {
     pub completed_mega: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Orbitals {
-    AnythingArray(Vec<Box<Option<serde_json::Value>>>),
-    IntegerMap(VecOrMap<Number>),
+    Anything(VecOrMap<serde_json::Value>),
+    IntegerMap(Vec<Number>),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MegastructureVariables {
     pub giga_asteroid_megastructure_id: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4000,17 +4536,20 @@ pub struct Message {
     #[serde(rename = "type")]
     pub purple_type: Box<Option<String>>,
     pub coordinate: Box<Option<Position>>,
-    pub variables: Box<Option<Vec<MessageVariable>>>,
     pub localization: Box<Option<String>>,
     pub date: Box<Option<String>>,
     pub receiver: Box<Option<Number>>,
     pub end: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MessageVariable {
     pub key: Box<Option<String>>,
     pub value: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4037,12 +4576,16 @@ pub struct MissileMissile {
     pub shield: Box<Option<Number>>,
     pub weapon_component_template: Box<Option<String>>,
     pub rotation_rate: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NaturalWormhole {
     pub coordinate: Box<Option<Position>>,
     pub bypass: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4051,11 +4594,15 @@ pub struct Nebula {
     pub radius: Box<Option<Number>>,
     pub galactic_object: Box<Option<GalacticObjectUnion>>,
     pub coordinate: Box<Option<Position>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct OpenPlayerEventSelectionHistory {
     pub selected: Box<Option<Vec<Selected>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4063,6 +4610,8 @@ pub struct Selected {
     pub player_event: Box<Option<Number>>,
     pub human: Box<Option<Number>>,
     pub option: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4070,11 +4619,15 @@ pub struct OrbitalLine {
     pub coordinate: Box<Option<Position>>,
     pub moon_of: Box<Option<Number>>,
     pub orbit: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Planets {
     pub planet: Box<Option<VecOrMap<PlanetValue>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4162,18 +4715,21 @@ pub struct PlanetClass {
     pub anomaly: Box<Option<String>>,
     pub surveyed: Box<Option<String>>,
     pub is_under_colonization: Box<Option<String>>,
-    pub variables: Box<Option<VecOrMap<Number>>>,
     pub entity_planet_class: Box<Option<String>>,
     pub picture: Box<Option<String>>,
     pub atmosphere_color: Box<Option<Vec<Number>>>,
     pub atmosphere_width: Box<Option<Number>>,
     pub atmosphere_intensity: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExternallyOwnedBuildQueue {
     pub value: Box<Option<Number>>,
     pub key: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4181,6 +4737,8 @@ pub struct ExternallyOwnedBuilding {
     pub buildings: Box<Option<Vec<Number>>>,
     pub building_owner: Box<Option<Number>>,
     pub owner_type: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4357,6 +4915,8 @@ pub struct PlanetFlags {
     pub giga_terraforming_megastructure: Box<Option<Number>>,
     pub katzenland: Box<Option<Number>>,
     pub paluushia: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4370,6 +4930,8 @@ pub enum JobPriorityUnion {
 pub struct JobPriorityElement {
     pub priority: Box<Option<Number>>,
     pub job: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4377,18 +4939,24 @@ pub struct JobsCache {
     pub max_without_prio: Box<Option<Number>>,
     pub num_employed: Box<Option<Number>>,
     pub max_employed: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SpeciesInformation {
     pub num_pops: Box<Option<Number>>,
     pub num_enslaved: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Player {
     pub name: Box<Option<String>>,
     pub country: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4420,16 +4988,22 @@ pub struct Pop {
     pub demotion: Box<Option<String>>,
     pub former_job: Box<Option<String>>,
     pub flags: Box<Option<PopFlags>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PopEthos {
     pub ethic: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PopFlags {
     pub organic_fallen_empire_pop: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4441,6 +5015,8 @@ pub struct RandomNameDatabase {
     pub asteroid_postfix: Box<Option<Vec<Vec<String>>>>,
     pub star_names: Box<Option<Vec<String>>>,
     pub black_hole_names: Box<Option<Vec<String>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4451,11 +5027,15 @@ pub struct Resolution {
     pub voting: Box<Option<VecOrMap<String>>>,
     #[serde(rename = "type")]
     pub resolution_type: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SavedLeaders {
     pub trapped_in_storm: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4468,6 +5048,8 @@ pub struct Sector {
     pub owner: Box<Option<Number>>,
     pub resources: Box<Option<Number>>,
     pub local_capital: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4492,6 +5074,8 @@ pub struct ShipDesignClass {
     pub is_event_design: Box<Option<String>>,
     pub country_type: Box<Option<String>>,
     pub ship_owner_type: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4506,6 +5090,8 @@ pub struct PurpleSection {
     pub template: Box<Option<String>>,
     pub slot: Box<Option<String>>,
     pub component: Box<Option<ComponentUnion>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4519,6 +5105,8 @@ pub enum ComponentUnion {
 pub struct ComponentElement {
     pub slot: Box<Option<String>>,
     pub template: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4526,6 +5114,8 @@ pub struct FluffySection {
     pub template: Box<Option<String>>,
     pub slot: Box<Option<String>>,
     pub component: Box<Option<Vec<ComponentElement>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4576,6 +5166,8 @@ pub struct Ship {
     pub shield_recharge_time: Box<Option<Number>>,
     pub ship_modifier: Box<Option<ShipModifier>>,
     pub homepop: Box<Option<Homepop>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4588,24 +5180,32 @@ pub struct AuraModifier {
     pub ship_jumpdrive_cooldown_mult: Box<Option<Number>>,
     pub ship_weapon_damage: Box<Option<Number>>,
     pub ship_weapon_range_mult: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Aura {
     pub id: Box<Option<Id>>,
     pub source: Box<Option<Source>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Id {
     pub priority: Box<Option<Number>>,
     pub id: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Source {
     pub ship: Box<Option<Number>>,
     pub aura: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4617,11 +5217,15 @@ pub struct ShipFlags {
     pub here_be_the_dragon_ship: Box<Option<Number>>,
     pub giga_moon_fe: Box<Option<Number>>,
     pub giga_planet_fe: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Homepop {
     pub species: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4637,6 +5241,8 @@ pub struct TentacledSection {
     pub slot: Box<Option<String>>,
     pub weapon: Box<Option<StickyWeapon>>,
     pub strike_craft: Box<Option<SectionStrikeCraft>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4652,6 +5258,8 @@ pub struct StrikeCraftElement {
     pub launch_time: Box<Option<Number>>,
     pub component_slot: Box<Option<String>>,
     pub count: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4668,6 +5276,8 @@ pub struct PurpleWeapon {
     pub template: Box<Option<String>>,
     pub cooldown: Box<Option<Number>>,
     pub shots_fired: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4676,6 +5286,8 @@ pub struct StickySection {
     pub slot: Box<Option<String>>,
     pub weapon: Box<Option<IndigoWeapon>>,
     pub strike_craft: Box<Option<SectionStrikeCraft>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4694,6 +5306,8 @@ pub struct FluffyWeapon {
     pub target: Box<Option<Owner>>,
     pub shots_fired: Box<Option<Number>>,
     pub windup: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4701,23 +5315,29 @@ pub struct TentacledWeapon {
     pub component_slot: Box<Option<String>>,
     pub index: Box<Option<Number>>,
     pub template: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ShipModifier {
     pub ship_starting_experience_add: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Situations {
     pub situations: Box<Option<VecOrMap<SituationValue>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum SituationValue {
     SituationClass(SituationClass),
-    String(String),
+    Anything(serde_json::Value),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4725,19 +5345,14 @@ pub struct SituationClass {
     pub target: Box<Option<SituationTarget>>,
     pub last_month_progress: Box<Option<Number>>,
     pub approach: Box<Option<String>>,
-    pub flags: Box<Option<SituationFlags>>,
+    pub flags: Box<Option<serde_json::Value>>,
     pub country: Box<Option<Number>>,
     #[serde(rename = "type")]
     pub situation_type: Box<Option<String>>,
     pub progress: Box<Option<Number>>,
     pub stage_flags: Box<Option<Vec<String>>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SituationFlags {
-    pub technological_setback: Box<Option<AsteroidSightedPreFtlGlobal>>,
-    pub had_recent_observation_event: Box<Option<AsteroidSightedPreFtlGlobal>>,
-    pub technological_breakthrough: Box<Option<AsteroidSightedPreFtlGlobal>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4745,6 +5360,8 @@ pub struct SituationTarget {
     #[serde(rename = "type")]
     pub target_type: Box<Option<String>>,
     pub id: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4762,6 +5379,8 @@ pub struct SpeciesDb {
     pub name_data: Box<Option<String>>,
     pub flags: Box<Option<VecOrMap<Number>>>,
     pub sapient: Box<Option<String>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4775,6 +5394,8 @@ pub enum SpeciesDbTraits {
 pub struct TraitsClass {
     #[serde(rename = "trait")]
     pub traits_trait: Box<Option<RequiredComponentUnion>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4784,11 +5405,15 @@ pub struct SpyNetwork {
     pub leader: Box<Option<Number>>,
     pub target: Box<Option<Number>>,
     pub owner: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StarbaseMgr {
     pub starbases: Box<Option<VecOrMap<Starbase>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4804,6 +5429,8 @@ pub struct Starbase {
     pub level: Box<Option<String>>,
     pub buildings: Box<Option<VecOrMap<String>>>,
     pub station: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4832,12 +5459,16 @@ pub struct PurpleStrikeCraft {
     pub strike_craft_component_template: Box<Option<String>>,
     pub armor: Box<Option<Number>>,
     pub rotation: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SystemInitializerCounter {
     pub count: Box<Option<Vec<Number>>>,
     pub initializer: Box<Option<Vec<String>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4849,6 +5480,8 @@ pub struct TradeRoute {
     pub trade_route_type: Box<Option<String>>,
     pub path: Box<Option<Vec<PathElement>>>,
     pub owner: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4856,15 +5489,83 @@ pub struct PathElement {
     pub delivered: Box<Option<Number>>,
     pub collected: Box<Option<Number>>,
     pub id: Box<Option<Number>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TradeRoutesManager {
     pub trade_routes: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UsedSpecies {
     pub class: Box<Option<String>>,
     pub values: Box<Option<Vec<Number>>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct War {
+    pub name: Option<WarName>,
+    pub start_date: Option<String>,
+    pub attackers: Option<Vec<Attacker>>,
+    pub defenders: Option<Vec<Attacker>>,
+    pub battles: Option<Vec<Battle>>,
+    pub attacker_war_goal: Option<ErWarGoal>,
+    pub defender_war_goal: Option<ErWarGoal>,
+    pub have_defender_war_goal: Option<String>,
+    pub attacker_war_exhaustion: Option<f64>,
+    pub defender_war_exhaustion: Option<f64>,
+    pub attacker_force_peace: Option<String>,
+    pub attacker_force_peace_date: Option<String>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ErWarGoal {
+    #[serde(rename = "type")]
+    pub er_war_goal_type: Option<String>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Attacker {
+    pub call_type: Option<String>,
+    pub country: Option<Number>,
+    pub caller: Option<Number>,
+    pub fleets_gone_mia: Option<Number>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Battle {
+    pub defenders: Option<Vec<Number>>,
+    pub attackers: Option<Vec<Number>>,
+    pub system: Option<Number>,
+    pub planet: Option<Number>,
+    pub attacker_war_exhaustion: Option<f64>,
+    pub defender_war_exhaustion: Option<f64>,
+    pub attacker_victory: Option<String>,
+    pub date: Option<String>,
+    pub attacker_losses: Option<Number>,
+    pub defender_losses: Option<Number>,
+    #[serde(rename = "type")]
+    pub battle_type: Option<String>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WarName {
+    pub key: Option<String>,
+    pub variables: Option<Vec<CunningVariable>>,
+    #[serde(default)]
+    _ignore: Option<serde_json::Value>,
 }

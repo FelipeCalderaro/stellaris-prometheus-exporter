@@ -30,6 +30,10 @@ pub fn get_country_infos(gm: Gamestate, save: &str) {
     // };
 
     if let VecOrMap::Map(countries) = gm.country.clone().unwrap() {
+        debug!(
+            "Detected {} Countries to extract info from",
+            countries.len()
+        );
         for (key, value) in countries {
             trace!("Analysing current country: {}", key);
             match value {
@@ -45,26 +49,27 @@ pub fn get_country_infos(gm: Gamestate, save: &str) {
                 _ => {}
             }
         }
-    } else if let VecOrMap::Vec(countries) = gm.country.clone().unwrap() {
-        warn!("Gamestate.Country is not a HashMap. Analysing as Vec");
-        for (id, value) in countries.iter().enumerate() {
-            trace!("Analysing current country: {}", id);
-            match value {
-                CountryValue::CountryClass(country) => {
-                    let name_temp = get_country_name(&country).unwrap_or(format!("{:?}", id));
-                    let name = name_temp.as_str();
-
-                    get_country_powers(&country, name, save);
-                    get_country_fleets(&country, name, save);
-                    get_country_balance(&country, name, save);
-                    get_country_victory_score_n_rank(&country, name, save);
-                }
-                _ => {}
-            }
-        }
-    } else {
-        error!("No country to parse: {:?}", gm.country.clone());
     }
+    //  else if let VecOrMap::Vec(countries) = gm.country.clone().unwrap() {
+    //     warn!("Gamestate.Country is not a HashMap. Analysing as Vec");
+    //     for (id, value) in countries.iter().enumerate() {
+    //         trace!("Analysing current country: {}", id);
+    //         // match value {
+    //         //     CountryValue::CountryClass(country) => {
+    //         //         let name_temp = get_country_name(&country).unwrap_or(format!("{:?}", id));
+    //         //         let name = name_temp.as_str();
+
+    //         //         get_country_powers(&country, name, save);
+    //         //         get_country_fleets(&country, name, save);
+    //         //         get_country_balance(&country, name, save);
+    //         //         get_country_victory_score_n_rank(&country, name, save);
+    //         //     }
+    //         //     _ => {}
+    //         // }
+    //     }
+    // } else {
+    //     error!("No country to parse: {:?}", gm.country.clone());
+    // }
 }
 
 fn get_country_powers(country: &CountryClass, name: &str, save: &str) {
@@ -228,7 +233,7 @@ pub fn get_battles(gm: Gamestate, save: &str) {
                             if let Some(attackers) = battle.attackers {
                                 if attackers.len() > 0 {
                                     if let Some(country) =
-                                        get_country_by_id(&gm, attackers.get(0).unwrap())
+                                        get_country_by_id(&gm, &attackers.get(0).unwrap().to_i64())
                                     {
                                         let name_temp = get_country_name(&country)
                                             .unwrap_or(format!("{:?}", key));
@@ -240,7 +245,7 @@ pub fn get_battles(gm: Gamestate, save: &str) {
                             if let Some(defenders) = battle.defenders {
                                 if defenders.len() > 0 {
                                     if let Some(country) =
-                                        get_country_by_id(&gm, defenders.get(0).unwrap())
+                                        get_country_by_id(&gm, &defenders.get(0).unwrap().to_i64())
                                     {
                                         let name_temp = get_country_name(&country)
                                             .unwrap_or(format!("{:?}", key));
@@ -263,7 +268,7 @@ pub fn get_battles(gm: Gamestate, save: &str) {
                                     "defender",
                                     key.as_str(),
                                 ])
-                                .set(battle.defender_losses.unwrap_or(0) as f64);
+                                .set(battle.defender_losses.unwrap_or(Number::Int(0)).to_f64());
                             STELLARIS_COUNTRY_BATTLE_LOSSES
                                 .with_label_values(&[
                                     save,
@@ -273,7 +278,7 @@ pub fn get_battles(gm: Gamestate, save: &str) {
                                     "attacker",
                                     key.as_str(),
                                 ])
-                                .set(battle.attacker_losses.unwrap_or(0) as f64);
+                                .set(battle.attacker_losses.unwrap_or(Number::Int(0)).to_f64());
                         }
                     }
                 }
@@ -285,42 +290,46 @@ pub fn get_battles(gm: Gamestate, save: &str) {
 
 pub fn get_megastructures(gm: Gamestate, save: &str) {
     info!("Collecting megastructures info");
-    if let Some(value) = *gm.megastructures.clone() {
-        if let VecOrMap::Map(structures) = value {
-            for (_, mstr) in structures.iter() {
-                if let Some(tp) = *mstr.megastructure_type.clone() {
-                    let mut curr_name = String::new();
-                    if let Ok(name) = render_name(tp) {
-                        curr_name = name;
-                    }
-                    let owner_id = mstr.owner.clone().unwrap_or(Number::Int(-1));
-                    let owner_name = match get_country_by_id(&gm, &owner_id.to_i64()) {
-                        Some(c) => {
-                            let temp_name = String::new();
-                            let res = get_country_name(&c).unwrap_or(temp_name);
-                            res
-                        }
-                        None => mstr
-                            .owner
-                            .clone()
-                            .unwrap_or(Number::Int(-1))
-                            .to_i64()
-                            .to_string(),
-                    };
-
-                    let same_structres_owner: HashMap<String, Megastructure> = structures
-                        .iter()
-                        .filter(|(_, v)| {
-                            v.megastructure_type == mstr.megastructure_type && v.owner == mstr.owner
-                        })
-                        .map(|(k, v)| (k.clone(), v.clone()))
-                        .collect();
-
-                    STELLARIS_MEGASTRUCTURES
-                        .with_label_values(&[save, curr_name.as_str(), owner_name.as_str()])
-                        .set(same_structres_owner.len() as f64);
+    if let Some(structures) = *gm.megastructures.clone() {
+        debug!(
+            "Detected {} megastructures to collect info from",
+            structures.len()
+        );
+        // if let VecOrMap::Map(structures) = value {
+        for (_, mstr) in structures.iter() {
+            if let Some(tp) = mstr.megastructure_type.clone() {
+                let mut curr_name = String::new();
+                if let Ok(name) = render_name(tp) {
+                    curr_name = name;
                 }
+                let owner_id = mstr.owner.clone().unwrap_or(Number::Int(-1));
+                let owner_name = match get_country_by_id(&gm, &owner_id.to_i64()) {
+                    Some(c) => {
+                        let temp_name = String::new();
+                        let res = get_country_name(&c).unwrap_or(temp_name);
+                        res
+                    }
+                    None => mstr
+                        .owner
+                        .clone()
+                        .unwrap_or(Number::Int(-1))
+                        .to_i64()
+                        .to_string(),
+                };
+
+                let same_structres_owner: HashMap<String, Megastructure> = structures
+                    .iter()
+                    .filter(|(_, v)| {
+                        v.megastructure_type == mstr.megastructure_type && v.owner == mstr.owner
+                    })
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect();
+
+                STELLARIS_MEGASTRUCTURES
+                    .with_label_values(&[save, curr_name.as_str(), owner_name.as_str()])
+                    .set(same_structres_owner.len() as f64);
             }
         }
     }
+    // }
 }

@@ -57,3 +57,9 @@ pub fn read_from_json_file() -> Result<Box<String>, FromUtf8Error> {
         Err(e) => Err(e),
     }
 }
+
+pub fn convert_to_pretty_str(content: String) -> serde_json::Result<String> {
+    let json: serde_json::Value = serde_json::from_str(&content.as_str())?;
+    let pretty = serde_json::to_string_pretty(&json).unwrap();
+    Ok(pretty)
+}

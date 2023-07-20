@@ -7,7 +7,10 @@ use futures::{
 use log::{debug, error, info, trace, warn};
 use notify::{Config, Error, Event, RecommendedWatcher, RecursiveMode, Watcher};
 
-use crate::file::save_handler::{parse_save_file, save_json_to_file};
+use crate::{
+    file::save_handler::{convert_to_pretty_str, parse_save_file, save_json_to_file},
+    singletons::singletons::set_game_data,
+};
 
 pub fn spawn_file_watcher(path: String) {
     // let profile = std::env::var("USERPROFILE").unwrap();
@@ -67,7 +70,14 @@ pub async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
                                         };
                                         std::env::set_var("STELLARIS_FILENAME", content.filename);
                                         std::env::set_var("STELLARIS_GAMEID", content.game_id);
-                                        let _ = save_json_to_file(&content.gamestate);
+
+                                        if let Ok(pretty) =
+                                            convert_to_pretty_str(*content.gamestate)
+                                        {
+                                            let _ = set_game_data(pretty.clone());
+                                            let _ = save_json_to_file(&Box::new(pretty));
+                                        }
+
                                         info!("Save file parsed");
                                     } else {
                                         warn!("The entry has no Path");

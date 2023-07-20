@@ -1,5 +1,5 @@
 use actix_web::{get, http::header::ContentType, HttpRequest, HttpResponse};
-use log::debug;
+use log::{debug, error};
 use prometheus::Encoder;
 use regex::Regex;
 use std::io::Write;
@@ -11,6 +11,7 @@ use std::{
 };
 use walkdir::WalkDir;
 
+use crate::singletons::singletons::get_game_data;
 use crate::{
     exporter::{
         exporter::{REGISTRY, STELLARIS_INCOMING_REQUESTS},
@@ -95,22 +96,31 @@ pub async fn metrics(_req: HttpRequest) -> HttpResponse {
         Err(_) => "NO_ID".to_owned(),
     };
 
-    let result = match read_from_json_file() {
-        Ok(c) => c,
-        Err(_) => {
-            return HttpResponse::NotFound()
-                .content_type(ContentType::plaintext())
-                .body("")
-        }
-    };
+    // let result = match read_from_json_file() {
+    //     Ok(c) => c,
+    //     Err(_) => {
+    //         return HttpResponse::NotFound()
+    //             .content_type(ContentType::plaintext())
+    //             .body("")
+    //     }
+    // };
 
-    let model = match save_handler::map_to_model(result) {
+    let result = get_game_data();
+
+    if let Err(_) = result {
+        error!("Data could no be read from memory or not ready yet");
+        return HttpResponse::NotFound()
+            .content_type(ContentType::plaintext())
+            .body("Data could not be read or not ready yet");
+    }
+
+    let model = match save_handler::map_to_model(result.unwrap()) {
         Ok(m) => m,
         Err(e) => {
-            println!("{:?}", e);
+            error!("map_to_model:: {:?}", e);
             return HttpResponse::NotFound()
                 .content_type(ContentType::plaintext())
-                .body(format!("{:?}", e));
+                .body("Data could not be read or not ready yet");
         }
     };
     get_country_infos(*model.clone(), _game_id.as_ref());
@@ -167,7 +177,10 @@ pub async fn parse(_req: HttpRequest) -> HttpResponse {
     std::env::set_var("STELLARIS_FILENAME", content.filename);
     std::env::set_var("STELLARIS_GAMEID", content.game_id);
 
-    let _ = save_handler::save_json_to_file(&content.gamestate);
+    let v: serde_json::Value = serde_json::from_str(&content.gamestate).unwrap();
+    let s = serde_json::to_string_pretty(&v).unwrap();
+
+    let _ = save_handler::save_json_to_file(&Box::new(s));
     return HttpResponse::Ok()
         .content_type(ContentType::plaintext())
         .body("Done!");
