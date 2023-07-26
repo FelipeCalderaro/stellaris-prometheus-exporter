@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::{fs, io::Read};
 
 use zip::ZipArchive;
 
@@ -40,16 +40,22 @@ pub fn load_save_content<'a>(filename: &str) -> Result<SaveFile, &str> {
         Err(e) => return Err(e),
     };
     let gamestate = match read_file_from_archive(&mut archive, "gamestate") {
-        Ok(content) => content,
+        Ok(content) => remove_tabs_and_newlines(content.as_str()),
         Err(e) => return Err(e),
     };
-
+    // fs::write("content", gamestate.clone().as_bytes());
     Ok(SaveFile {
         filename: String::from(filename),
         game_id,
         meta,
         gamestate,
     })
+}
+
+fn remove_tabs_and_newlines(input: &str) -> String {
+    let no_tabs = input.replace("\t", " ");
+    let no_tabs_or_newlines = no_tabs.replace("\n", " ");
+    no_tabs_or_newlines
 }
 
 pub fn read_file_from_archive(

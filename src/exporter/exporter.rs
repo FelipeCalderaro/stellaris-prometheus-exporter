@@ -17,7 +17,7 @@ pub static STELLARIS_COUNTRY_POWER: Lazy<GaugeVec> = Lazy::new(|| {
         ),
         &["save_name", "power_type", "country"],
     )
-    .expect("Could'nt create country gauge")
+    .expect("Could'nt create gauge")
 });
 
 pub static STELLARIS_MEGASTRUCTURES: Lazy<GaugeVec> = Lazy::new(|| {
@@ -28,7 +28,7 @@ pub static STELLARIS_MEGASTRUCTURES: Lazy<GaugeVec> = Lazy::new(|| {
         ),
         &["save_name", "name", "owner"],
     )
-    .expect("Could'nt create country gauge")
+    .expect("Could'nt create gauge")
 });
 
 pub static STELLARIS_COUNTRY_BALANCE: Lazy<GaugeVec> = Lazy::new(|| {
@@ -39,7 +39,7 @@ pub static STELLARIS_COUNTRY_BALANCE: Lazy<GaugeVec> = Lazy::new(|| {
         ),
         &["save_name", "country", "resource_name"],
     )
-    .expect("Could'nt create country gauge")
+    .expect("Could'nt create gauge")
 });
 
 pub static STELLARIS_COUNTRY_VICTORY_STATUS: Lazy<GaugeVec> = Lazy::new(|| {
@@ -50,7 +50,7 @@ pub static STELLARIS_COUNTRY_VICTORY_STATUS: Lazy<GaugeVec> = Lazy::new(|| {
         ),
         &["save_name", "country", "type"],
     )
-    .expect("Could'nt create country gauge")
+    .expect("Could'nt create gauge")
 });
 
 pub static STELLARIS_COUNTRY_BATTLE_LOSSES: Lazy<GaugeVec> = Lazy::new(|| {
@@ -68,7 +68,27 @@ pub static STELLARIS_COUNTRY_BATTLE_LOSSES: Lazy<GaugeVec> = Lazy::new(|| {
             "id",
         ],
     )
-    .expect("Could'nt create country gauge")
+    .expect("Could'nt create gauge")
+});
+
+pub static STELLARIS_COUNTRY_WAR_BATLLES: Lazy<IntGaugeVec> = Lazy::new(|| {
+    IntGaugeVec::new(
+        Opts::new(
+            "stellaris_country_war_battles",
+            "The amount of battles for each war between countries",
+        ),
+        &[
+            "save_name",
+            "attacker",
+            "defender",
+            "attacker_war_goal",
+            "defender_war_goal",
+            "war_name",
+            "start_date",
+            "id",
+        ],
+    )
+    .expect("Could'nt create gauge")
 });
 
 pub static STELLARIS_COUNTRY_FLEETS: Lazy<IntGaugeVec> = Lazy::new(|| {
@@ -79,7 +99,18 @@ pub static STELLARIS_COUNTRY_FLEETS: Lazy<IntGaugeVec> = Lazy::new(|| {
         ),
         &["save_name", "country"],
     )
-    .expect("Could'nt create country gauge")
+    .expect("Could'nt create gauge")
+});
+
+pub static STELLARIS_COUNTRY_WAR_ALLIES: Lazy<IntGaugeVec> = Lazy::new(|| {
+    IntGaugeVec::new(
+        Opts::new(
+            "stellaris_country_war_allies",
+            "The number of allies for each country in case of war.",
+        ),
+        &["save_name", "country"],
+    )
+    .expect("Could'nt create gauge")
 });
 
 pub fn register_metrics() {
@@ -94,5 +125,17 @@ pub fn register_metrics() {
         .expect("Collector registered");
     REGISTRY
         .register(Box::new(STELLARIS_COUNTRY_FLEETS.clone()))
+        .expect("Collector registered");
+    REGISTRY
+        .register(Box::new(STELLARIS_COUNTRY_VICTORY_STATUS.clone()))
+        .expect("Collector registered");
+    REGISTRY
+        .register(Box::new(STELLARIS_COUNTRY_WAR_ALLIES.clone()))
+        .expect("Collector registered");
+    REGISTRY
+        .register(Box::new(STELLARIS_MEGASTRUCTURES.clone()))
+        .expect("Collector registered");
+    REGISTRY
+        .register(Box::new(STELLARIS_COUNTRY_WAR_BATLLES.clone()))
         .expect("Collector registered");
 }

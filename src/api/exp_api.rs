@@ -11,13 +11,14 @@ use std::{
 };
 use walkdir::WalkDir;
 
+use crate::exporter::extractor::{get_megastructures, get_wars};
 use crate::singletons::singletons::get_game_data;
 use crate::{
     exporter::{
         exporter::{REGISTRY, STELLARIS_INCOMING_REQUESTS},
-        extractor::{get_battles, get_country_infos, get_megastructures},
+        extractor::get_country_infos,
     },
-    file::save_handler::{self, read_from_json_file},
+    file::save_handler,
 };
 
 fn get_localization_files(dir: &Path) -> Vec<String> {
@@ -123,9 +124,10 @@ pub async fn metrics(_req: HttpRequest) -> HttpResponse {
                 .body("Data could not be read or not ready yet");
         }
     };
-    get_country_infos(*model.clone(), _game_id.as_ref());
-    get_battles(*model.clone(), _game_id.as_ref());
-    get_megastructures(*model.clone(), _game_id.as_ref());
+    get_country_infos(*model.clone(), &_game_id);
+    get_megastructures(*model.clone(), &_game_id);
+    get_wars(*model.clone(), &_game_id);
+    // get_battles(*model.clone(), _game_id.as_ref());
 
     let encoder = prometheus::TextEncoder::new();
 

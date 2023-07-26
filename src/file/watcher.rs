@@ -68,6 +68,11 @@ pub async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
                                             Ok(c) => c,
                                             Err(_) => return Ok(()),
                                         };
+                                        debug!("Parsed Game ID: {}", &content.game_id);
+                                        debug!(
+                                            "Parsed content length: {:?}",
+                                            &content.gamestate.len()
+                                        );
                                         std::env::set_var("STELLARIS_FILENAME", content.filename);
                                         std::env::set_var("STELLARIS_GAMEID", content.game_id);
 

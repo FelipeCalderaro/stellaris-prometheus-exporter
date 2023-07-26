@@ -2,8 +2,10 @@ use std::cmp::min;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
-use std::time::Instant;
+use std::fs;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
+use log::{error, trace};
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while, take_while1};
 use nom::bytes::streaming::escaped;
@@ -22,6 +24,7 @@ use crate::file_io::SaveFile;
 #[derive(Serialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum Value<'a> {
+    None,
     Str(&'a str),
     Int(i64),
     Float(f64),
@@ -32,6 +35,7 @@ pub enum Value<'a> {
 impl Display for Value<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Value::None => write!(f, "none"),
             Value::Str(s) => write!(f, "{}", s),
             Value::Int(n) => write!(f, "{}", n),
             Value::Float(x) => write!(f, "{}", x),
@@ -69,9 +73,23 @@ pub fn parse_save<'a>(save_file: &'a SaveFile) -> Result<ParsedSaveFile<'a>, &'s
 
 pub fn parse_file<'a>(input: &'a str) -> Result<Value<'a>, &str> {
     match parse_map_inner(input) {
-        Ok((_, hm)) => Ok(Value::Map(hm)),
+        Ok((remainder, hm)) => {
+            trace!("Remainder length: {:?}", remainder.len());
+            if remainder.chars().all(char::is_whitespace) {
+                Ok(Value::Map(hm))
+            } else {
+                error!("Remainder is not empty: {:?}", remainder.len());
+                fs::write("remainder", remainder.as_bytes());
+                Err(remainder)
+            }
+        }
         _ => Err("Parsing failed"),
     }
+}
+
+fn parse_none(input: &str) -> IResult<&str, Value> {
+    let (input, _) = tag("none")(input)?;
+    Ok((input, Value::None))
 }
 
 fn parse_value(input: &str) -> IResult<&str, Value> {
@@ -85,6 +103,7 @@ fn parse_value(input: &str) -> IResult<&str, Value> {
         context("unquoted_str", map(parse_unquoted_str, Value::Str)),
         context("list", map(parse_list, Value::List)),
         context("map", map(parse_map, Value::Map)),
+        context("none", parse_none),
     ))(input)
 }
 

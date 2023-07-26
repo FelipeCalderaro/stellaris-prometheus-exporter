@@ -1,19 +1,15 @@
 use lazy_static::lazy_static;
-use log::{debug, error, trace, warn};
+use log::{debug, trace};
 use regex::Regex;
 use serde_json::Value;
 use std::{
-    borrow::BorrowMut,
     collections::HashMap,
     error::Error,
-    fs::{self, read, File},
-    io::{self, BufRead, BufReader},
+    fs,
     path::Path,
     sync::{Arc, Mutex},
 };
 use walkdir::WalkDir;
-
-use crate::models::gamestate_model::PurpleName;
 
 lazy_static! {
     static ref LOCALIZATION_PATH: String =
@@ -27,7 +23,6 @@ lazy_static! {
 pub struct NameRenderer {
     localization_files: Vec<String>,
     name_mapping: HashMap<String, String>,
-    default_name: String,
 }
 
 impl NameRenderer {
@@ -35,7 +30,6 @@ impl NameRenderer {
         NameRenderer {
             localization_files,
             name_mapping: HashMap::new(),
-            default_name: "Unknown name".to_string(),
         }
     }
 
@@ -76,205 +70,101 @@ impl NameRenderer {
         return None;
     }
 
-    fn get_name(&mut self, purple_name: PurpleName) -> Option<String> {
-        let mut name_parts: Vec<String> = Vec::new();
-
-        // Check if key is %ADJECTIVE% or %ADJ%
-        if *purple_name.key != Some("%ADJECTIVE%".to_string())
-            && *purple_name.key != Some("%ADJ%".to_string())
-        {
-            // Check if literal field contains "yes"
-            if *purple_name.literal == Some("yes".to_string()) {
-                name_parts.push(purple_name.key.unwrap());
-            } else if *purple_name.literal == None && *purple_name.variables == None {
-                // Check if the key exists in the hashmap and append its value
-                if let Some(value) = self.name_mapping.get(&purple_name.key.unwrap()) {
-                    name_parts.push(value.to_string());
-                }
-            }
-        }
-
-        // Handle the variables field
-        if let Some(variables) = &*purple_name.variables {
-            for variable in variables {
-                // Check if the key is "adjective" or "1"
-                if *variable.key == Some("adjective".to_string())
-                    || *variable.key == Some("1".to_string())
-                {
-                    if let Some(v) = &*variable.value {
-                        if let Some(k) = *v.key.clone() {
-                            // Check if the value.key exists in the hashmap and append its value
-                            if let Some(value) = self.name_mapping.get(&k) {
-                                name_parts.push(value.to_string());
+    fn apply_grammar_rules(&mut self, mut rule: String, variables: Vec<Value>) -> String {
+        for obj in variables {
+            let key = obj.get("key").and_then(|v| v.as_str());
+            let value = obj.get("value");
+            if let (Some(k), Some(v)) = (key, value) {
+                trace!("Analysing {:?}", k);
+                if rule.contains(k) {
+                    trace!("{:?} contains {:?}", rule, k);
+                    if let Some(content) = v.get("key").and_then(|x| x.as_str()) {
+                        let mapping = self.name_mapping.clone();
+                        let from_localization = &mapping.get(content);
+                        if content == "%ADJ%" || from_localization.is_none() {
+                            let mut result = String::new();
+                            // // Check if the input object has a "variables" field
+                            if let Some(variables) = v.get("variables").and_then(|v| v.as_array()) {
+                                // If it does, iterate over each item in the list
+                                result.push_str(&self.apply_grammar_rules(
+                                    "$1$ ".repeat(variables.len()).trim_end().to_string(),
+                                    variables.to_owned(),
+                                ));
                             }
+                            rule = rule.replace(k, &result);
+                        } else if let Some(localized) = from_localization {
+                            trace!("Located localization for {:?}:{:?}", content, localized);
+                            if let Some(vars) = v.get("variables").and_then(|v| v.as_array()) {
+                                trace!("Localization contains another variables");
+                                let mut replaced = String::new();
+                                replaced.push_str(rule.replace(k, localized).as_str());
+                                replaced.push(' ');
+                                replaced.push_str("$1$ ".repeat(vars.len()).trim_end());
+                                let applied = self.apply_grammar_rules(replaced, vars.to_owned());
+                                rule = rule.replace(k, &applied);
+                            }
+                            // } else {
+                            trace!("Localization already is final, returning");
+                            rule = rule.replace(k, localized);
+                            // }
                         }
                     }
                 } else {
-                    if let Some(v) = &*variable.value {
-                        if let Some(k) = *v.key.clone() {
-                            // Check if the value.key exists in the hashmap and append its value
-                            if let Some(value) = self.name_mapping.get(&k) {
-                                name_parts.push(value.to_string());
-                            }
-                        }
-                    }
+                    trace!("{:?} not contains {:?}", rule, k);
                 }
             }
         }
 
-        // Join the name parts into a single string and return it
-        Some(name_parts.join(" "))
+        rule.replace("$", "")
+            .replace("]", "")
+            .replace("[", "")
+            .trim()
+            .to_string()
     }
 
-    pub fn format_name_old(&mut self, name_json: &str) -> String {
-        // Parse the JSON string into a serde_json::Value
-        let name: Value = serde_json::from_str(name_json).unwrap();
+    fn transform_input_to_readable(&mut self, input_object: &Value) -> String {
+        // Initialize an empty string to hold the final result
+        let mut result = String::new();
 
-        // Initialize an empty vector to hold the parts of the name
-        let mut name_parts: Vec<String> = vec![];
-
-        // Check the 'key' field of the dictionary
-        let key = name["key"].as_str().unwrap_or("");
-
-        if key == "%ADJECTIVE%" || key == "%ADJ%" {
-            // Process the variables
-            let s = vec![];
-            let variables = name["variables"].as_array().unwrap_or(&s);
-            for variable in variables {
-                let var_key = variable["key"].as_str().unwrap_or("");
-                if var_key == "adjective" || var_key == "1" {
-                    let value_key = variable["value"]["key"].as_str().unwrap_or("");
-                    if let Some(name_part) = self.name_mapping.get(value_key) {
-                        name_parts.push(name_part.to_string());
-                    }
+        // Check if the input object has a "key" field
+        if let Some(key) = input_object["key"].as_str() {
+            if input_object["literal"].is_null() && input_object["variables"].is_null() {
+                // If "literal" and "variables" are null, use the key as the result
+                if let Some(k) = self.name_mapping.get(key) {
+                    result.push_str(k);
+                    result.push(' ');
+                } else {
+                    result.push_str(key);
+                    result.push(' ');
                 }
-            }
-        } else {
-            // Process the 'literal' field
-            let literal = name["literal"].as_str().unwrap_or("");
-            if literal == "yes" {
-                name_parts.push(key.to_string());
-            }
-
-            let s = vec![];
-            // Process the variables
-            let variables = name["variables"].as_array().unwrap_or(&s);
-            for variable in variables {
-                let value_key = variable["value"]["key"].as_str().unwrap_or("");
-                if let Some(name_part) = self.name_mapping.get(value_key) {
-                    name_parts.push(name_part.to_string());
-                }
-            }
-
-            // If 'literal' and 'variables' are both null, look up the key in the location map
-            if literal == "" && variables.is_empty() {
-                if let Some(name_part) = self.name_mapping.get(key) {
-                    name_parts.push(name_part.to_string());
+            } else if let (Some(key), Some(values)) =
+                (self.name_mapping.get(key), input_object.get("variables"))
+            {
+                // If it does, add the corresponding value from the map to the result string
+                let grammar_aplied =
+                    self.apply_grammar_rules(key.to_owned(), values.as_array().unwrap().to_owned());
+                result.push_str(&grammar_aplied);
+                result.push(' ');
+            } else if let Some(literal) = input_object["literal"].as_str() {
+                if literal == "yes" && input_object["variables"].is_null() {
+                    // If "literal" is "yes" and "variables" is null, use the key as the result
+                    result.push_str(key);
+                    result.push(' ');
                 }
             }
         }
 
-        // Join all parts of the name into a single string
-        let formatted_name = name_parts.join(" ");
+        // // Check if the input object has a "variables" field
+        // if let Some(variables) = input_object["variables"].as_array() {
+        //     // If it does, iterate over each item in the list
+        //     for variable in variables {
+        //         // Each item is another object that needs to be transformed, so call the function recursively
+        //         result.push_str(&self.transform_input_to_readable(&variable["value"]));
+        //     }
+        // }
 
-        formatted_name
-    }
-
-    fn recursive_search(
-        &mut self,
-        key: &str,
-        location_map: &HashMap<String, String>,
-        variables: Option<&Vec<Value>>,
-    ) -> String {
-        let mut key = key.to_string();
-        if let Some(variables) = variables {
-            for variable in variables {
-                let value_key = variable["value"]["key"].as_str().unwrap_or("");
-                if let Some(name_part) = location_map.get(value_key) {
-                    key = name_part.to_string();
-                }
-                if variable["value"]["variables"].is_array() {
-                    key.push_str(&self.recursive_search(
-                        "",
-                        location_map,
-                        variable["value"]["variables"].as_array(),
-                    ));
-                }
-            }
-        }
-        key
-    }
-
-    pub fn format_name(&mut self, name_json: &str) -> String {
-        // Parse the JSON string into a serde_json::Value
-        let name: Value = serde_json::from_str(name_json).unwrap();
-
-        // Initialize an empty vector to hold the parts of the name
-        let mut name_parts: Vec<String> = Vec::new();
-
-        // Check the 'key' field of the dictionary
-        let key = name["key"].as_str().unwrap_or("");
-
-        if key == "%ADJECTIVE%" || key == "%ADJ%" {
-            // Process the variables
-            if name["variables"].is_array() {
-                for variable in name["variables"].as_array().unwrap() {
-                    let var_key = variable["key"].as_str().unwrap_or("");
-                    if var_key == "adjective" || var_key == "1" {
-                        let value_key = variable["value"]["key"].as_str().unwrap_or("");
-                        if let Some(name_part) = self.name_mapping.get(value_key) {
-                            name_parts.push(name_part.to_string());
-                        }
-                        if variable["value"]["variables"].is_array() {
-                            let res = self.recursive_search(
-                                "",
-                                &self.name_mapping.clone(),
-                                variable["value"]["variables"].as_array(),
-                            );
-                            name_parts.push(res);
-                        }
-                    }
-                }
-            }
-        } else {
-            // Process the 'literal' field
-            let literal = name["literal"].as_str().unwrap_or("");
-            if literal == "yes" {
-                name_parts.push(key.to_string());
-            }
-
-            // Process the variables
-            if name["variables"].is_array() {
-                for variable in name["variables"].as_array().unwrap() {
-                    let value_key = variable["value"]["key"].as_str().unwrap_or("");
-                    if let Some(name_part) = self.name_mapping.get(value_key) {
-                        name_parts.push(name_part.to_string());
-                    }
-                    if variable["value"]["variables"].is_array() {
-                        name_parts.push(
-                            self.recursive_search(
-                                "",
-                                &self.name_mapping.clone(),
-                                variable["value"]["variables"].as_array(),
-                            )
-                            .to_owned(),
-                        );
-                    }
-                }
-            }
-
-            // If 'literal' and 'variables' are both null, look up the key in the location map
-            if literal == "" && !name["variables"].is_array() {
-                if let Some(name_part) = self.name_mapping.get(key) {
-                    name_parts.push(name_part.to_string());
-                }
-            }
-        }
-
-        // Join all parts of the name into a single string
-        let formatted_name = name_parts.join(" ");
-
-        formatted_name
+        // Return the final result string
+        result.trim().to_string()
     }
 }
 
@@ -321,27 +211,18 @@ fn get_localization_files(dir: &Path) -> Vec<String> {
     return files;
 }
 
-// pub fn render_name(json: &str) -> Result<String, Box<dyn Error>> {
-//     let renderer = GLOBAL_RENDERER.clone();
-//     let mut renderer = renderer.lock()?;
-//     if renderer.name_mapping.len() == 0 {
-//         renderer.load_name_mapping();
-//     }
-//     return renderer.render_from_json(json);
-// }
 pub fn render_name(key: String) -> Result<String, Box<dyn Error>> {
     let mut renderer = GLOBAL_RENDERER.lock()?;
     if renderer.name_mapping.is_empty() {
         renderer.load_name_mapping();
     }
-    Ok(renderer.from_key(key).unwrap_or("".to_string()))
+    Ok(renderer.from_key(key.clone()).unwrap_or(key))
 }
 
-pub fn format_name(name: String) -> Result<String, Box<dyn Error>> {
+pub fn transform_input_name(input: &Value) -> Result<String, Box<dyn Error>> {
     let mut renderer = GLOBAL_RENDERER.lock()?;
     if renderer.name_mapping.is_empty() {
         renderer.load_name_mapping();
     }
-    let res = renderer.format_name(name.as_str());
-    Ok(res)
+    Ok(renderer.transform_input_to_readable(input))
 }

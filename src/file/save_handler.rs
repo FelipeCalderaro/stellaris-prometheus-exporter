@@ -1,4 +1,4 @@
-use log::{debug, trace};
+use log::{debug, error, trace};
 
 use crate::{file_io::load_save_content, models::gamestate_model::Gamestate, parser::parse_save};
 use std::{fs::File, io::Write, process::exit, string::FromUtf8Error};
@@ -31,7 +31,7 @@ pub fn parse_save_file(save_path: &str) -> Result<GameContent, String> {
             };
         }
         Err(msg) => {
-            println!("Failed to parse {}: {}", save_file.filename, msg);
+            error!("Failed to parse {}: {}", save_file.filename, msg);
             return Err(format!("Failed to parse {}: {}", save_file.filename, msg));
         }
     };
