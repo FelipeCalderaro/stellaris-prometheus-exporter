@@ -11,9 +11,11 @@ use std::{
 };
 use walkdir::WalkDir;
 
+use crate::exporter::configs::CONFIGS;
+
 lazy_static! {
-    static ref LOCALIZATION_PATH: String =
-        r#"F:\SteamLibrary\steamapps\common\Stellaris\localisation\english\"#.to_string();
+    // r#"F:\SteamLibrary\steamapps\common\Stellaris\localisation\english\"#.to_string();
+    static ref LOCALIZATION_PATH: String = CONFIGS.lock().unwrap().paths.localisation_path.clone();
     static ref GLOBAL_RENDERER: Arc<Mutex<NameRenderer>> = Arc::new(Mutex::new(NameRenderer::new(
         get_localization_files(Path::new(&*LOCALIZATION_PATH))
     )));
@@ -71,10 +73,22 @@ impl NameRenderer {
     }
 
     fn apply_grammar_rules(&mut self, mut rule: String, variables: Vec<Value>) -> String {
+        trace!(
+            "Rule is:{:?}, Variables len: {:?}, Variables: {:#?}",
+            rule,
+            variables.len(),
+            variables,
+        );
         for obj in variables {
-            let key = obj.get("key").and_then(|v| v.as_str());
+            let key = obj.get("key").map(|f| match f {
+                Value::Number(n) => n.to_string(),
+                Value::String(s) => s.to_owned(),
+                _ => "".to_string(),
+            });
             let value = obj.get("value");
-            if let (Some(k), Some(v)) = (key, value) {
+            trace!("(k,v): {:?},{:?}", key, value);
+            if let (Some(ks), Some(v)) = (key, value) {
+                let k = ks.as_str();
                 trace!("Analysing {:?}", k);
                 if rule.contains(k) {
                     trace!("{:?} contains {:?}", rule, k);
@@ -123,6 +137,7 @@ impl NameRenderer {
     }
 
     fn transform_input_to_readable(&mut self, input_object: &Value) -> String {
+        trace!("Transforming Object: {:?}", input_object);
         // Initialize an empty string to hold the final result
         let mut result = String::new();
 
@@ -140,7 +155,7 @@ impl NameRenderer {
             } else if let (Some(key), Some(values)) =
                 (self.name_mapping.get(key), input_object.get("variables"))
             {
-                // If it does, add the corresponding value from the map to the result string
+                // If it does have key, add the corresponding value from the map to the result string
                 let grammar_aplied =
                     self.apply_grammar_rules(key.to_owned(), values.as_array().unwrap().to_owned());
                 result.push_str(&grammar_aplied);

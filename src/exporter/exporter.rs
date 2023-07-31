@@ -71,6 +71,17 @@ pub static STELLARIS_COUNTRY_BATTLE_LOSSES: Lazy<GaugeVec> = Lazy::new(|| {
     .expect("Could'nt create gauge")
 });
 
+pub static STELLARIS_COUNTRY_SHIP_SIZES: Lazy<GaugeVec> = Lazy::new(|| {
+    GaugeVec::new(
+        Opts::new(
+            "stellaris_country_ship_sizes",
+            "The amount of ship sizes for each country",
+        ),
+        &["save_name", "name", "ship_size"],
+    )
+    .expect("Could'nt create gauge")
+});
+
 pub static STELLARIS_COUNTRY_WAR_BATLLES: Lazy<IntGaugeVec> = Lazy::new(|| {
     IntGaugeVec::new(
         Opts::new(
@@ -87,6 +98,39 @@ pub static STELLARIS_COUNTRY_WAR_BATLLES: Lazy<IntGaugeVec> = Lazy::new(|| {
             "start_date",
             "id",
         ],
+    )
+    .expect("Could'nt create gauge")
+});
+
+pub static STELLARIS_COUNTRY_CONTROLLED_CELESTIAL_BODIES: Lazy<IntGaugeVec> = Lazy::new(|| {
+    IntGaugeVec::new(
+        Opts::new(
+            "stellaris_country_controlled_celestial_bodies",
+            "The amount of celestial bodies controlled by each country",
+        ),
+        &["save_name", "country"],
+    )
+    .expect("Could'nt create gauge")
+});
+
+pub static STELLARIS_COUNTRY_COLONIZED_PLANETS: Lazy<IntGaugeVec> = Lazy::new(|| {
+    IntGaugeVec::new(
+        Opts::new(
+            "stellaris_country_colonized_planets",
+            "The amount of celestial bodies that were colonized by each country",
+        ),
+        &["save_name", "country"],
+    )
+    .expect("Could'nt create gauge")
+});
+
+pub static STELLARIS_COUNTRY_SURVEYED_SYSTEMS: Lazy<IntGaugeVec> = Lazy::new(|| {
+    IntGaugeVec::new(
+        Opts::new(
+            "stellaris_country_surveyed_systems",
+            "The number of surveyed systems by each country",
+        ),
+        &["save_name", "country"],
     )
     .expect("Could'nt create gauge")
 });
@@ -137,5 +181,19 @@ pub fn register_metrics() {
         .expect("Collector registered");
     REGISTRY
         .register(Box::new(STELLARIS_COUNTRY_WAR_BATLLES.clone()))
+        .expect("Collector registered");
+    REGISTRY
+        .register(Box::new(
+            STELLARIS_COUNTRY_CONTROLLED_CELESTIAL_BODIES.clone(),
+        ))
+        .expect("Collector registered");
+    REGISTRY
+        .register(Box::new(STELLARIS_COUNTRY_COLONIZED_PLANETS.clone()))
+        .expect("Collector registered");
+    REGISTRY
+        .register(Box::new(STELLARIS_COUNTRY_SURVEYED_SYSTEMS.clone()))
+        .expect("Collector registered");
+    REGISTRY
+        .register(Box::new(STELLARIS_COUNTRY_SHIP_SIZES.clone()))
         .expect("Collector registered");
 }

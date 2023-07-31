@@ -1,0 +1,29 @@
+# WARNING: Paths must be within single quotes.
+[paths]
+# Where the save games are located
+# Refer to this https://stellaris.paradoxwikis.com/Save-game_editing 
+# to find where your save files are.
+# Only the path to the saves are needed, 
+# Ex: %USERPROFILE%\Documents\Paradox Interactive\Stellaris\save games
+save_location='C:\Users\kella\OneDrive\Documentos\Paradox Interactive\Stellaris\save games' 
+
+# Where the game files is located
+# This will vary dependind on which plataform
+# you own the game. 
+# If it's Steam default installation it will be something like:
+# C:\Program Files (x86)\Steam\steamapps\common\Stellaris 
+game_files_dir='F:\SteamLibrary\steamapps\common\Stellaris'
+
+# the path to the game's localisation files. Located under
+# the game files dir. Use the language of your choice.
+# Ex: <game_files_dir>\localisation\english 
+localisation_path='F:\SteamLibrary\steamapps\common\Stellaris\localisation\english'
+
+[api]
+# Default to expose the machine local network ip is: 0.0.0.0
+# Even if you set the ip the localhost (127.0.0.1) will 
+# be available as well
+ip="0.0.0.0" 
+
+# Must be allowed within the firewall (in and out rules)
+port=8881 

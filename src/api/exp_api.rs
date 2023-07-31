@@ -92,41 +92,33 @@ pub async fn metrics(_req: HttpRequest) -> HttpResponse {
     //     Ok(n) => n,
     //     Err(_) => "NO_NAME".to_owned(),
     // };
-    let _game_id = match std::env::var("STELLARIS_GAMEID") {
-        Ok(n) => n,
-        Err(_) => "NO_ID".to_owned(),
-    };
+    // let _game_id = match std::env::var("STELLARIS_GAMEID") {
+    //     Ok(n) => n,
+    //     Err(_) => "NO_ID".to_owned(),
+    // };
 
-    // let result = match read_from_json_file() {
-    //     Ok(c) => c,
-    //     Err(_) => {
+    // let result = get_game_data();
+
+    // if let Err(_) = result {
+    //     error!("Data could no be read from memory or not ready yet");
+    //     return HttpResponse::NotFound()
+    //         .content_type(ContentType::plaintext())
+    //         .body("Data could not be read or not ready yet");
+    // }
+
+    // let model = match save_handler::map_to_model(result.unwrap()) {
+    //     Ok(m) => m,
+    //     Err(e) => {
+    //         error!("map_to_model:: {:?}", e);
     //         return HttpResponse::NotFound()
     //             .content_type(ContentType::plaintext())
-    //             .body("")
+    //             .body("Data could not be read or not ready yet");
     //     }
     // };
 
-    let result = get_game_data();
-
-    if let Err(_) = result {
-        error!("Data could no be read from memory or not ready yet");
-        return HttpResponse::NotFound()
-            .content_type(ContentType::plaintext())
-            .body("Data could not be read or not ready yet");
-    }
-
-    let model = match save_handler::map_to_model(result.unwrap()) {
-        Ok(m) => m,
-        Err(e) => {
-            error!("map_to_model:: {:?}", e);
-            return HttpResponse::NotFound()
-                .content_type(ContentType::plaintext())
-                .body("Data could not be read or not ready yet");
-        }
-    };
-    get_country_infos(*model.clone(), &_game_id);
-    get_megastructures(*model.clone(), &_game_id);
-    get_wars(*model.clone(), &_game_id);
+    // get_country_infos(*model.clone(), &_game_id);
+    // get_megastructures(*model.clone(), &_game_id);
+    // get_wars(*model.clone(), &_game_id);
     // get_battles(*model.clone(), _game_id.as_ref());
 
     let encoder = prometheus::TextEncoder::new();

@@ -1,15 +1,20 @@
 use lazy_static::__Deref;
 use log::{debug, error, info, trace, warn};
-use serde_json::{Map, Value};
-use std::error::Error;
+use serde_json::{json, Map, Number, Value};
+use std::{collections::HashMap, error::Error};
 
 use super::exporter::{
     STELLARIS_COUNTRY_BALANCE, STELLARIS_COUNTRY_BATTLE_LOSSES, STELLARIS_COUNTRY_FLEETS,
-    STELLARIS_COUNTRY_POWER, STELLARIS_COUNTRY_VICTORY_STATUS, STELLARIS_MEGASTRUCTURES,
+    STELLARIS_COUNTRY_POWER, STELLARIS_COUNTRY_SHIP_SIZES, STELLARIS_COUNTRY_VICTORY_STATUS,
+    STELLARIS_MEGASTRUCTURES,
 };
 use crate::{
     exporter::{
-        exporter::{STELLARIS_COUNTRY_WAR_ALLIES, STELLARIS_COUNTRY_WAR_BATLLES},
+        exporter::{
+            STELLARIS_COUNTRY_COLONIZED_PLANETS, STELLARIS_COUNTRY_CONTROLLED_CELESTIAL_BODIES,
+            STELLARIS_COUNTRY_SURVEYED_SYSTEMS, STELLARIS_COUNTRY_WAR_ALLIES,
+            STELLARIS_COUNTRY_WAR_BATLLES,
+        },
         renderers::{render_name, transform_input_name},
     },
     models::gamestate_model::Gamestate,
@@ -46,6 +51,20 @@ pub fn get_country_infos(gm: Gamestate, save: &str) {
                     get_country_balance(&country, name, save);
                     get_country_victory_score_n_rank(&country, name, save);
                     get_country_war_allies(&country, name, save);
+                    get_country_controlled_celestial_bodies(&country, name, save);
+                    get_country_colonized_planets(&country, name, save);
+                    get_country_surveyed_systems(&country, name, save);
+                    if let (
+                        Some(Value::Object(fleet)),
+                        Some(Value::Object(designs)),
+                        Some(Value::Object(ships)),
+                    ) = (
+                        *gm.fleet.clone(),
+                        *gm.ship_design.clone(),
+                        *gm.ships.clone(),
+                    ) {
+                        get_country_ships_types(&country, &fleet, &ships, &designs, name, save);
+                    }
                 }
                 _ => {}
             }
@@ -148,6 +167,102 @@ fn get_country_war_allies(country: &Map<String, Value>, name: &str, save: &str) 
                 .with_label_values(&[save, name])
                 .set(v.len() as i64);
         });
+}
+
+fn get_country_controlled_celestial_bodies(country: &Map<String, Value>, name: &str, save: &str) {
+    trace!("\tSeparating country Controlled Celestial Bodies");
+
+    country
+        .get("controlled_planets")
+        .and_then(|planets| planets.as_array())
+        .map(|planets| planets.len())
+        .map(|length| {
+            STELLARIS_COUNTRY_CONTROLLED_CELESTIAL_BODIES
+                .with_label_values(&[save, name])
+                .set(length as i64)
+        });
+}
+
+fn get_country_colonized_planets(country: &Map<String, Value>, name: &str, save: &str) {
+    trace!("\tSeparating country Colonized Planets");
+    country
+        .get("owned_planets")
+        .and_then(|v| v.as_array())
+        .map(|planets| planets.len())
+        .map(|length| {
+            STELLARIS_COUNTRY_COLONIZED_PLANETS
+                .with_label_values(&[save, name])
+                .set(length as i64)
+        });
+}
+
+fn get_country_surveyed_systems(country: &Map<String, Value>, name: &str, save: &str) {
+    trace!("\tSeparating country Surveyed Systems");
+    country
+        .get("surveyed")
+        .and_then(|v| v.as_array())
+        .map(|surveyed| surveyed.len())
+        .map(|len| {
+            STELLARIS_COUNTRY_SURVEYED_SYSTEMS
+                .with_label_values(&[save, name])
+                .set(len as i64)
+        });
+}
+
+fn get_country_ships_types(
+    country: &Map<String, Value>,
+    fleets: &Map<String, Value>,
+    ships: &Map<String, Value>,
+    ship_designs: &Map<String, Value>,
+    name: &str,
+    save: &str,
+) {
+    trace!("\tSeparating country Ship Types");
+    let mut ships_ids: Vec<Value> = Vec::new();
+    country
+        .get("fleets_manager")
+        .and_then(|f| f.as_object())
+        .and_then(|fleets_manager| fleets_manager.get("owned_fleets"))
+        .and_then(|v| v.as_array())
+        .map(|owned_fleets| {
+            for owned in owned_fleets {
+                if let Some(fleet) = owned.get("fleet").and_then(|v| v.as_i64()) {
+                    if let Some(sps) = fleets
+                        .get(fleet.to_string().as_str())
+                        .and_then(|flt| flt.get("ships"))
+                        .and_then(|v| v.as_array())
+                    {
+                        ships_ids.extend_from_slice(sps);
+                    }
+                }
+            }
+        });
+
+    for ship_id in &ships_ids {
+        let id = ship_id.as_i64().unwrap_or(0);
+        let design = ships
+            .get(id.to_string().as_str())
+            .and_then(|v| v.get("ship_design"))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(-1);
+        let size = ship_designs
+            .get(design.to_string().as_str())
+            .and_then(|v| v.as_object())
+            .and_then(|v| v.get("ship_size"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("no_size");
+        let sizes: HashMap<String, Value> = ships
+            .iter()
+            .filter(|(k, v)| {
+                ships_ids.contains(&json!(k.parse::<i64>().unwrap_or(-1)))
+                    && v.get("ship_design").and_then(|v| v.as_i64()).unwrap_or(-1) == design
+            })
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        STELLARIS_COUNTRY_SHIP_SIZES
+            .with_label_values(&[save, name, size])
+            .set(sizes.len() as f64);
+    }
 }
 
 fn get_country_by_id(gm: Gamestate, id: &i64) -> Option<Value> {
@@ -262,10 +377,12 @@ pub fn get_wars(gm: Gamestate, save: &str) {
                 let main_attacker_name = get_country_name(&main_attacker);
                 let main_defender_name = get_country_name(&main_defender);
 
-                let battles = war
+                let number_of_battles = war
                     .get("battles")
                     .and_then(|v| v.as_array())
                     .map(|v| v.len() as i64);
+
+                let battles = war.get("battles").and_then(|v| v.as_array());
 
                 STELLARIS_COUNTRY_WAR_BATLLES
                     .with_label_values(&[
@@ -282,86 +399,35 @@ pub fn get_wars(gm: Gamestate, save: &str) {
                         date,
                         id.as_str(),
                     ])
-                    .set(battles.unwrap_or(0))
+                    .set(number_of_battles.unwrap_or(0))
             }
         }
     }
 }
 
-fn get_war_battles() {}
+fn get_war_battles(battles: &Vec<Value>) {}
 
 fn get_war_exhaustion() {}
-// pub fn get_battles(gm: Gamestate, save: &str) {
-//     info!("Collecting battles info");
-//     if let Some(wr) = *gm.war.clone() {
-//         match wr {
-//             VecOrMap::Map(wars) => {
-//                 for (key, war) in wars {
-//                     if let Some(battles) = war.battles {
-//                         for battle in battles {
-//                             let mut main_attacker_name = String::new();
-//                             let mut main_defender_name = String::new();
-//                             if let Some(attackers) = battle.attackers {
-//                                 if attackers.len() > 0 {
-//                                     if let Some(country) =
-//                                         get_country_by_id(&gm, &attackers.get(0).unwrap().to_i64())
-//                                     {
-//                                         let name_temp = get_country_name(&country)
-//                                             .unwrap_or(format!("{:?}", key));
-//                                         let name = name_temp.as_str();
-//                                         main_attacker_name = name.to_string();
-//                                     }
-//                                 }
-//                             }
-//                             if let Some(defenders) = battle.defenders {
-//                                 if defenders.len() > 0 {
-//                                     if let Some(country) =
-//                                         get_country_by_id(&gm, &defenders.get(0).unwrap().to_i64())
-//                                     {
-//                                         let name_temp = get_country_name(&country)
-//                                             .unwrap_or(format!("{:?}", key));
-//                                         let name = name_temp.as_str();
-//                                         main_defender_name = name.to_string();
-//                                     }
-//                                 }
-//                             }
 
-//                             let battle_type_temp =
-//                                 battle.battle_type.unwrap_or("undefined".to_string());
-//                             let battle_type = battle_type_temp.as_str();
+fn get_country_name_by_id(gm: Gamestate, id: &str) -> Option<String> {
+    let name = gm
+        .country
+        .and_then(|countries| countries.get(id).cloned())
+        .and_then(|country| country.get("name").cloned())
+        .map(|v| transform_input_name(&v));
 
-//                             STELLARIS_COUNTRY_BATTLE_LOSSES
-//                                 .with_label_values(&[
-//                                     save,
-//                                     main_attacker_name.as_str(),
-//                                     main_defender_name.as_str(),
-//                                     battle_type,
-//                                     "defender",
-//                                     key.as_str(),
-//                                 ])
-//                                 .set(battle.defender_losses.unwrap_or(Number::Int(0)).to_f64());
-//                             STELLARIS_COUNTRY_BATTLE_LOSSES
-//                                 .with_label_values(&[
-//                                     save,
-//                                     main_attacker_name.as_str(),
-//                                     main_defender_name.as_str(),
-//                                     battle_type,
-//                                     "attacker",
-//                                     key.as_str(),
-//                                 ])
-//                                 .set(battle.attacker_losses.unwrap_or(Number::Int(0)).to_f64());
-//                         }
-//                     }
-//                 }
-//             }
-//             _ => {}
-//         }
-//     }
-// }
+    match name {
+        Some(nm) => match nm {
+            Ok(n) => Some(n),
+            Err(_) => None,
+        },
+        None => None,
+    }
+}
 
 pub fn get_megastructures(gm: Gamestate, save: &str) {
     info!("Collecting megastructures info");
-    if let Some(structures) = *gm.megastructures {
+    if let Some(structures) = *gm.megastructures.clone() {
         match structures {
             Value::Object(structs) => {
                 debug!(
@@ -371,7 +437,12 @@ pub fn get_megastructures(gm: Gamestate, save: &str) {
                 for (_, mstruct) in structs.iter() {
                     let mut name = String::new();
                     let owner = mstruct.get("owner").and_then(|v| v.as_i64()).unwrap_or(-1);
-                    if let Some(Ok(nm)) = mstruct.get("type").map(|v| transform_input_name(v)) {
+                    let owner_name = get_country_name_by_id(gm.clone(), owner.to_string().as_str());
+                    if let Some(Ok(nm)) = mstruct
+                        .get("type")
+                        .and_then(|v| v.as_str())
+                        .map(|v| render_name(v.to_string()))
+                    {
                         name = nm;
                     }
 
@@ -384,7 +455,11 @@ pub fn get_megastructures(gm: Gamestate, save: &str) {
                         .map(|(k, v)| (k.clone(), v.clone()))
                         .collect();
                     STELLARIS_MEGASTRUCTURES
-                        .with_label_values(&[save, name.as_str(), owner.to_string().as_str()])
+                        .with_label_values(&[
+                            save,
+                            name.as_str(),
+                            owner_name.unwrap_or(owner.to_string()).as_str(),
+                        ])
                         .set(same_structres_owner.len() as f64);
                 }
             }

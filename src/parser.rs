@@ -2,8 +2,7 @@ use std::cmp::min;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
-use std::fs;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
 use log::{error, trace};
 use nom::branch::alt;
@@ -79,7 +78,6 @@ pub fn parse_file<'a>(input: &'a str) -> Result<Value<'a>, &str> {
                 Ok(Value::Map(hm))
             } else {
                 error!("Remainder is not empty: {:?}", remainder.len());
-                fs::write("remainder", remainder.as_bytes());
                 Err(remainder)
             }
         }
@@ -88,6 +86,7 @@ pub fn parse_file<'a>(input: &'a str) -> Result<Value<'a>, &str> {
 }
 
 fn parse_none(input: &str) -> IResult<&str, Value> {
+    trace!("Running Parsing Value: {}", input);
     let (input, _) = tag("none")(input)?;
     Ok((input, Value::None))
 }
@@ -95,6 +94,7 @@ fn parse_none(input: &str) -> IResult<&str, Value> {
 fn parse_value(input: &str) -> IResult<&str, Value> {
     // print!("Parsing next value from: ");
     // debug_str(input);
+    // trace!("Running Parsing Value: {}", input.len());
     alt((
         context("date", map(parse_date_str, Value::Str)),
         context("int", map(parse_int, Value::Int)),

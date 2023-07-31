@@ -8,7 +8,10 @@ use log::{debug, error, info, trace, warn};
 use notify::{Config, Error, Event, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::{
-    file::save_handler::{convert_to_pretty_str, parse_save_file, save_json_to_file},
+    exporter::extractor::{get_country_infos, get_megastructures, get_wars},
+    file::save_handler::{
+        self, convert_to_pretty_str, parse_save_file, parse_save_file_2, save_json_to_file,
+    },
     singletons::singletons::set_game_data,
 };
 
@@ -64,7 +67,7 @@ pub async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
                                 {
                                     info!("Parsing new save file");
                                     if let Some(path) = created_path.as_path().to_str() {
-                                        let content = match parse_save_file(path) {
+                                        let content = match parse_save_file_2(path) {
                                             Ok(c) => c,
                                             Err(_) => return Ok(()),
                                         };
@@ -73,12 +76,19 @@ pub async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
                                             "Parsed content length: {:?}",
                                             &content.gamestate.len()
                                         );
-                                        std::env::set_var("STELLARIS_FILENAME", content.filename);
-                                        std::env::set_var("STELLARIS_GAMEID", content.game_id);
+                                        // std::env::set_var("STELLARIS_FILENAME", content.filename);
+                                        // std::env::set_var("STELLARIS_GAMEID", content.game_id);
 
                                         if let Ok(pretty) =
                                             convert_to_pretty_str(*content.gamestate)
                                         {
+                                            let model = save_handler::map_to_model(Box::new(
+                                                pretty.clone(),
+                                            ))
+                                            .unwrap();
+                                            get_country_infos(*model.clone(), &content.game_id);
+                                            get_megastructures(*model.clone(), &content.game_id);
+                                            get_wars(*model.clone(), &content.game_id);
                                             let _ = set_game_data(pretty.clone());
                                             let _ = save_json_to_file(&Box::new(pretty));
                                         }

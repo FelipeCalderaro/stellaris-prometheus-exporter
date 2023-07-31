@@ -70,7 +70,6 @@ pub struct Gamestate {
     pub tick: Box<Option<serde_json::Value>>,
     pub situations: Box<Option<serde_json::Value>>,
     pub deposit: Box<Option<serde_json::Value>>,
-    pub nebula: Box<Option<serde_json::Value>>,
     pub random_seed: Box<Option<serde_json::Value>>,
     pub megastructures: Box<Option<serde_json::Value>>,
     pub pop: Box<Option<serde_json::Value>>,
